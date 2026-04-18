@@ -1,0 +1,12 @@
+T17 Paste Tab + Polish — completed
+- index.html: paste tab already had textarea (adapted to actual codebase, no placeholder replacement needed)
+- index.html: favicon SVG data-URI added to head (煎 kanji)
+- index.html: skip-to-content link added after <body>
+- index.html: main#main-content id added to <main> element
+- index.html: Clear button added to results-actions
+- app.js: handlePasteConvert() — POST /api/convert/html with raw HTML body
+- app.js: clearAll() resets all inputs, results, file selection
+- app.js: Cmd/Ctrl+Enter keyboard shortcut dispatches to active tab's convert action
+- app.js: tab focus management — url-tab focuses urlInput, paste-tab focuses pasteInput
+- style.css: .skip-link styles (hidden off-screen, visible on :focus)
+- Note: adapted all element IDs to match actual HTML (url-tab/paste-tab not btn-url/btn-paste, results-area not results)

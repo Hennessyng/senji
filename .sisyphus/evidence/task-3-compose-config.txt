@@ -1,0 +1,7 @@
+docker compose -f /Users/hennessy/Documents/senji/docker-compose.yml config --quiet
+exit_code=0
+
+docker compose -f /Users/hennessy/Documents/senji/docker-compose.yml config --services
+docling
+readability
+gateway

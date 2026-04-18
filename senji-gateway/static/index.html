@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Senji — Convert web content to structured markdown" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>煎</text></svg>">
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="senji-token" id="senji-token" content="" />
+    <title>Senji — Content Conversion Dashboard</title>
+    <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">Senji</h1>
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <!-- Tab Navigation -->
+            <div class="tab-nav" role="tablist" aria-label="Conversion methods">
+                <button
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="url-panel"
+                    id="url-tab"
+                    class="tab-button tab-button--active"
+                >
+                    URL
+                </button>
+                <button
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="upload-panel"
+                    id="upload-tab"
+                    class="tab-button"
+                >
+                    Upload
+                </button>
+                <button
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="paste-panel"
+                    id="paste-tab"
+                    class="tab-button"
+                >
+                    Paste
+                </button>
+            </div>
+
+            <!-- Tab Panels -->
+            <div class="tab-panels">
+                <!-- URL Tab Panel -->
+                <div
+                    role="tabpanel"
+                    id="url-panel"
+                    class="tab-panel tab-panel--active"
+                    aria-labelledby="url-tab"
+                >
+                    <div class="input-group">
+                        <label for="url-input" class="input-label">URL:</label>
+                        <input
+                            type="url"
+                            id="url-input"
+                            class="input-field"
+                            placeholder="https://example.com"
+                            aria-describedby="url-help"
+                        />
+                        <p id="url-help" class="input-help">Enter a webpage URL to convert to markdown</p>
+                    </div>
+                    <button class="button button--primary" id="url-convert-btn">Convert</button>
+                </div>
+
+                <!-- Upload Tab Panel -->
+                <div
+                    role="tabpanel"
+                    id="upload-panel"
+                    class="tab-panel"
+                    aria-labelledby="upload-tab"
+                    style="display: none"
+                >
+                    <div class="drop-zone" id="drop-zone" aria-label="Drag and drop files here">
+                        <p class="drop-zone-text">Drag and drop a file here or click to select</p>
+                        <input
+                            type="file"
+                            id="file-input"
+                            class="file-input"
+                            accept=".pdf,.docx,.pptx"
+                            aria-describedby="file-help"
+                        />
+                    </div>
+                    <p id="file-help" class="input-help">Supported formats: PDF, DOCX, PPTX (max 50MB)</p>
+                    <div id="file-info" class="file-info" style="display: none">
+                        <p><strong>File:</strong> <span id="file-name"></span></p>
+                        <p><strong>Size:</strong> <span id="file-size"></span></p>
+                    </div>
+                    <button class="button button--primary" id="upload-convert-btn" style="display: none">Convert</button>
+                </div>
+
+                <!-- Paste Tab Panel -->
+                <div
+                    role="tabpanel"
+                    id="paste-panel"
+                    class="tab-panel"
+                    aria-labelledby="paste-tab"
+                    style="display: none"
+                >
+                    <div class="input-group">
+                        <label for="paste-input" class="input-label">HTML:</label>
+                        <textarea
+                            id="paste-input"
+                            class="textarea-field"
+                            placeholder="Paste HTML content here..."
+                            aria-describedby="paste-help"
+                        ></textarea>
+                        <p id="paste-help" class="input-help">Paste raw HTML to convert to markdown</p>
+                    </div>
+                    <button class="button button--primary" id="paste-convert-btn">Convert</button>
+                </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="error-banner" class="error-banner" style="display: none" role="alert" aria-live="polite">
+                <p id="error-message"></p>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading-spinner" class="loading-spinner" style="display: none" aria-hidden="true">
+                <div class="spinner"></div>
+                <p>Converting...</p>
+            </div>
+
+            <!-- Results Area -->
+            <div id="results-area" class="results-area" style="display: none">
+                <div class="results-header">
+                    <h2>Result</h2>
+                    <div class="results-actions">
+                        <button class="button button--secondary" id="copy-btn">Copy Markdown</button>
+                        <button class="button button--secondary" id="download-btn">Download .md</button>
+                        <button class="button button--secondary" id="clear-btn">Clear</button>
+                    </div>
+                </div>
+                <pre id="results-content" class="results-content"><code></code></pre>
+                <div id="result-metadata" class="result-metadata"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

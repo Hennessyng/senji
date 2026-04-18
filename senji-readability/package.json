@@ -1,0 +1,22 @@
+{
+  "name": "senji-readability",
+  "version": "0.1.0",
+  "description": "HTML to Markdown conversion service",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "mocha tests/"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0",
+    "express": "^4.18.0",
+    "jsdom": "^25.0.0",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.0",
+    "mocha": "^10.0.0",
+    "sinon": "^17.0.0"
+  }
+}

@@ -1,0 +1,2 @@
+grep "docling-serve" /Users/hennessy/Documents/senji/docker-compose.yml
+    image: ghcr.io/docling-project/docling-serve:1.16.1

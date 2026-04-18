@@ -1,0 +1,14 @@
+Task 11 Evidence: Unsupported file type rejection
+
+Test: test_exe_upload_returns_415
+Result: PASSED
+
+Test run: 34 passed in 0.25s (all tests green)
+Ruff: All checks passed
+
+Endpoint: POST /api/convert/file
+- Upload malware.exe → 415 Unsupported Media Type
+- Response body: {"error": "unsupported_type", "detail": "Allowed: pdf, docx, pptx"}
+- ALLOWED_EXTENSIONS = {".pdf", ".docx", ".pptx"} from docling_client
+- Extension extracted from filename, compared against allowlist
+- No file bytes read or forwarded for unsupported types

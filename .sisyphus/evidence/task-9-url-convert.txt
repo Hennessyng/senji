@@ -1,0 +1,20 @@
+T9: Gateway URL Fetch + Route to Readability — COMPLETE
+
+Files created:
+  - senji-gateway/app/services/fetcher.py
+  - senji-gateway/app/services/readability_client.py
+  - senji-gateway/app/routes/convert.py (POST /api/convert/url)
+  - senji-gateway/tests/test_convert_url.py
+
+Files modified:
+  - senji-gateway/app/main.py (removed /api/convert/url stub, added router include)
+
+pytest results (6/6 passed):
+  tests/test_convert_url.py::test_valid_url_returns_200 PASSED
+  tests/test_convert_url.py::test_invalid_url_returns_422 PASSED
+  tests/test_convert_url.py::test_fetch_timeout_returns_504 PASSED
+  tests/test_convert_url.py::test_readability_down_returns_503 PASSED
+  tests/test_convert_url.py::test_redirect_followed_final_url_in_source PASSED
+  tests/test_convert_url.py::test_fetch_http_error_returns_502 PASSED
+
+ruff check: All checks passed!

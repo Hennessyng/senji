@@ -1,0 +1,17 @@
+Task 12 Evidence: YAML escaping
+
+Source reference ported:
+- shortcuts/clip.py:110-127
+
+Escaping behavior in `senji-gateway/app/services/frontmatter.py`:
+- `\` → `\\`
+- `"` → `\"`
+- newline → `\n`
+
+Verified case:
+- input title: `He said "hello": world`
+- output line: `title: "He said \"hello\": world"`
+
+Test coverage:
+- `tests/test_frontmatter.py::test_title_with_quotes_and_colon_is_yaml_escaped`
+- full suite green: 43 passed

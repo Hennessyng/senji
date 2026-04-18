@@ -1,0 +1,11 @@
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    senji_token: str = "dev-token"
+    readability_url: str = "http://readability:3000"
+    docling_url: str = "http://docling:5001"
+    log_level: str = "INFO"
+
+
+settings = Settings()
