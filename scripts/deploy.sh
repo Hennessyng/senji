@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO=/opt/stacks/homelab
+REPO=/opt/stacks/homelab/senji
 LOG=/var/log/senji-deploy.log
 
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG"; }

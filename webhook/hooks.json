@@ -1,8 +1,8 @@
 [
   {
     "id": "deploy-senji",
-    "execute-command": "/opt/stacks/homelab/scripts/deploy.sh",
-    "command-working-directory": "/opt/stacks/homelab",
+    "execute-command": "/opt/stacks/homelab/senji/scripts/deploy.sh",
+    "command-working-directory": "/opt/stacks/homelab/senji",
     "response-message": "Deploy triggered",
     "trigger-rule": {
       "match": {

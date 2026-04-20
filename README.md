@@ -29,20 +29,20 @@ iCloud Drive / Obsidian / [vault] / Clippings / [title].md
 # From your Mac
 rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
   --exclude='.ruff_cache' --exclude='.DS_Store' \
-  /Users/hennessy/Documents/senji/ user@proxmox-vm:/opt/stacks/homelab/
+  /Users/hennessy/Documents/senji/ user@proxmox-vm:/opt/stacks/homelab/senji/
 ```
 
 Or clone directly on the VM:
 
 ```bash
 ssh user@proxmox-vm
-git clone https://github.com/youruser/senji.git /opt/stacks/homelab
+git clone https://github.com/youruser/senji.git /opt/stacks/homelab/senji
 ```
 
 ### 2. Configure environment
 
 ```bash
-cd /opt/stacks/homelab
+cd /opt/stacks/homelab/senji
 cp .env.example .env
 ```
 
@@ -94,7 +94,7 @@ No TLS config needed — Cloudflare handles it.
 ### Update (re-deploy)
 
 ```bash
-cd /opt/stacks/homelab
+cd /opt/stacks/homelab/senji
 git pull                              # or rsync from Mac again
 docker compose up -d --build gateway readability
 ```
@@ -213,7 +213,7 @@ scripts/deploy.sh
 
 ### Prerequisites
 
-- Senji repo cloned to `/opt/stacks/homelab` on the VM (see [Deploy on Proxmox](#deploy-on-proxmox))
+- Senji repo cloned to `/opt/stacks/homelab/senji` on the VM (see [Deploy on Proxmox](#deploy-on-proxmox))
 - `adnanh/webhook` binary available on the VM
 
 ### Step 1 — VM: install the webhook binary
@@ -245,7 +245,7 @@ openssl rand -hex 32
 The file `webhook/hooks.json` is already in the repo (cloned in Step 1 of [Deploy on Proxmox](#deploy-on-proxmox)). Edit it to set your secret:
 
 ```bash
-nano /opt/stacks/homelab/webhook/hooks.json
+nano /opt/stacks/homelab/senji/webhook/hooks.json
 # Find: "REPLACE_WITH_YOUR_WEBHOOK_SECRET"
 # Replace with your generated secret
 # Save: Ctrl+O → Enter → Ctrl+X
@@ -256,19 +256,19 @@ Or with a one-liner (replace `YOUR_SECRET_HERE`):
 ```bash
 SECRET="YOUR_SECRET_HERE"
 sed -i "s/REPLACE_WITH_YOUR_WEBHOOK_SECRET/$SECRET/" \
-  /opt/stacks/homelab/webhook/hooks.json
+  /opt/stacks/homelab/senji/webhook/hooks.json
 ```
 
 ### Step 3 — VM: make the deploy script executable
 
 ```bash
-chmod +x /opt/stacks/homelab/scripts/deploy.sh
+chmod +x /opt/stacks/homelab/senji/scripts/deploy.sh
 ```
 
 ### Step 4 — VM: install and start the systemd service
 
 ```bash
-cp /opt/stacks/homelab/webhook/senji-webhook.service /etc/systemd/system/
+cp /opt/stacks/homelab/senji/webhook/senji-webhook.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now senji-webhook
 ```
