@@ -14,16 +14,18 @@ Usage:
     python scripts/generate_shortcut.py --vault "MyVault"
     python scripts/generate_shortcut.py --vault "MyVault" --token "your-token" --output senji-clipper.shortcut
 """
+
 from __future__ import annotations
 
 import argparse
 import plistlib
+import subprocess
 import uuid
 from pathlib import Path
 
 DEFAULT_ENDPOINT = "https://markdown.myloft.cloud/api/convert/url"
 DEFAULT_TOKEN = "dev-token"
-DEFAULT_VAULT = "MyVault"
+DEFAULT_VAULT = "SeconBrain"
 
 _OCHAR = "\ufffc"
 
@@ -77,8 +79,7 @@ def _dict_value(*kv_pairs: tuple) -> dict:
     return {
         "Value": {
             "WFDictionaryFieldValueItems": [
-                {"WFItemType": 0, "WFKey": _text(k), "WFValue": v}
-                for k, v in kv_pairs
+                {"WFItemType": 0, "WFKey": _text(k), "WFValue": v} for k, v in kv_pairs
             ]
         },
         "WFSerializationType": "WFDictionaryFieldValue",
@@ -186,14 +187,27 @@ def build_shortcut(endpoint: str, token: str, vault: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate senji-clipper.shortcut")
-    parser.add_argument("--vault", default=DEFAULT_VAULT, metavar="NAME",
-                        help="Obsidian vault folder name in iCloud Drive (default: MyVault)")
-    parser.add_argument("--token", default=DEFAULT_TOKEN, metavar="TOKEN",
-                        help="Bearer token (default: dev-token)")
-    parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT, metavar="URL",
-                        help=f"Senji API URL (default: {DEFAULT_ENDPOINT})")
-    parser.add_argument("--output", default="senji-clipper.shortcut", metavar="FILE",
-                        help="Output file path (default: senji-clipper.shortcut)")
+    parser.add_argument(
+        "--vault",
+        default=DEFAULT_VAULT,
+        metavar="NAME",
+        help="Obsidian vault folder name in iCloud Drive (default: MyVault)",
+    )
+    parser.add_argument(
+        "--token", default=DEFAULT_TOKEN, metavar="TOKEN", help="Bearer token (default: dev-token)"
+    )
+    parser.add_argument(
+        "--endpoint",
+        default=DEFAULT_ENDPOINT,
+        metavar="URL",
+        help=f"Senji API URL (default: {DEFAULT_ENDPOINT})",
+    )
+    parser.add_argument(
+        "--output",
+        default="senji-clipper.shortcut",
+        metavar="FILE",
+        help="Output file path (default: senji-clipper.shortcut)",
+    )
     args = parser.parse_args()
 
     data = build_shortcut(endpoint=args.endpoint, token=args.token, vault=args.vault)
@@ -201,6 +215,8 @@ def main() -> None:
     out = Path(args.output)
     with out.open("wb") as f:
         plistlib.dump(data, f, fmt=plistlib.FMT_BINARY)
+
+    subprocess.run(["shortcuts", "sign", "-i", str(out), "-o", str(out)], check=True)
 
     size = out.stat().st_size
     print(f"\u2713 {out}  ({size:,} bytes)")
