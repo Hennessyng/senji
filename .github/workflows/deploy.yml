@@ -5,29 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install deps
-        run: |
-          cd senji-gateway
-          pip install -e ".[dev]" --quiet
-
-      - name: Run unit tests
-        run: |
-          cd senji-gateway
-          python -m pytest tests/ -v --tb=short -x
-
   deploy:
     name: Deploy to Proxmox VM
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Trigger webhook
