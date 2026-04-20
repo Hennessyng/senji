@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -30,7 +31,7 @@ import httpx
 
 # ── Config ────────────────────────────────────────────────────────────────────
 GATEWAY_URL = "http://localhost:7878"
-TOKEN = "dev-token"
+TOKEN = os.environ.get("SENJI_TOKEN", "dev-token")
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 TIMEOUT = 30.0
 LARGE_HTML_SIZE = 400_000  # 400 KB — exercises the payload-size fix (express default limit is 100 KB)

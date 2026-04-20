@@ -32,6 +32,7 @@ for i in $(seq 1 12); do
 done
 
 log "Running self-test"
+set -o allexport; source "$REPO/.env"; set +o allexport
 if python3 "$REPO/tests/agentic_self_test.py" >> "$LOG" 2>&1; then
     log "Self-test passed — deploy complete"
 else
