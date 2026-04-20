@@ -24,10 +24,10 @@ import os
 import subprocess
 import sys
 import time
+import urllib.request
+import urllib.error
 from dataclasses import dataclass, field
 from typing import Any
-
-import httpx
 
 # ── Config ────────────────────────────────────────────────────────────────────
 GATEWAY_URL = "http://localhost:7878"
@@ -115,20 +115,64 @@ def _project_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _get(client: httpx.Client, path: str, **kwargs) -> httpx.Response:
-    return client.get(f"{GATEWAY_URL}{path}", **kwargs)
+class _Response:
+    """Minimal response wrapper for stdlib urllib."""
+    def __init__(self, status_code: int, text: str, content: bytes):
+        self.status_code = status_code
+        self.text = text
+        self.content = content
+        self._json_cache = None
+
+    def json(self) -> dict:
+        if self._json_cache is None:
+            self._json_cache = json.loads(self.text)
+        return self._json_cache
 
 
-def _post(client: httpx.Client, path: str, **kwargs) -> httpx.Response:
-    return client.post(f"{GATEWAY_URL}{path}", **kwargs)
+def _get(path: str, headers: dict[str, str] | None = None, timeout: float = 30.0) -> _Response:
+    """GET request using stdlib urllib."""
+    url = f"{GATEWAY_URL}{path}"
+    req = urllib.request.Request(url, method="GET")
+    if headers:
+        for k, v in headers.items():
+            req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            content = resp.read()
+            return _Response(resp.status, content.decode("utf-8"), content)
+    except urllib.error.HTTPError as e:
+        content = e.read()
+        return _Response(e.code, content.decode("utf-8"), content)
+
+
+def _post(path: str, json_data: dict | None = None, headers: dict[str, str] | None = None, timeout: float = 30.0) -> _Response:
+    """POST request using stdlib urllib."""
+    url = f"{GATEWAY_URL}{path}"
+    body = None
+    if json_data:
+        body = json.dumps(json_data).encode("utf-8")
+
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    if headers:
+        for k, v in headers.items():
+            req.add_header(k, v)
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            content = resp.read()
+            return _Response(resp.status, content.decode("utf-8"), content)
+    except urllib.error.HTTPError as e:
+        content = e.read()
+        return _Response(e.code, content.decode("utf-8"), content)
 
 
 # ── Test cases ────────────────────────────────────────────────────────────────
-def test_gateway_reachable(client: httpx.Client) -> Result:
+def test_gateway_reachable() -> Result:
     """Gateway must respond on port 7878."""
     name = "gateway_reachable"
     try:
-        r = _get(client, "/health", timeout=5.0)
+        r = _get("/health", timeout=5.0)
         if r.status_code == 200 and r.json().get("status") == "ok":
             return Result(name, True, "HTTP 200 /health → {status: ok}")
         return Result(
@@ -136,7 +180,7 @@ def test_gateway_reachable(client: httpx.Client) -> Result:
             f"unexpected response: {r.status_code} {r.text[:200]}",
             fix="docker compose restart gateway",
         )
-    except (httpx.ConnectError, httpx.TimeoutException) as e:
+    except (urllib.error.URLError, TimeoutError) as e:
         return Result(
             name, False,
             f"connection failed: {e}",
@@ -145,10 +189,10 @@ def test_gateway_reachable(client: httpx.Client) -> Result:
         )
 
 
-def test_auth_no_token(client: httpx.Client) -> Result:
+def test_auth_no_token() -> Result:
     """Request without token must return 401."""
     name = "auth_no_token_401"
-    r = _post(client, "/api/convert/html", json={"html": "<p>x</p>"}, timeout=10.0)
+    r = _post("/api/convert/html", json_data={"html": "<p>x</p>"}, timeout=10.0)
     if r.status_code == 401:
         return Result(name, True, "401 as expected")
     return Result(
@@ -158,12 +202,12 @@ def test_auth_no_token(client: httpx.Client) -> Result:
     )
 
 
-def test_auth_wrong_token(client: httpx.Client) -> Result:
+def test_auth_wrong_token() -> Result:
     """Wrong token must return 401."""
     name = "auth_wrong_token_401"
     r = _post(
-        client, "/api/convert/html",
-        json={"html": "<p>x</p>"},
+        "/api/convert/html",
+        json_data={"html": "<p>x</p>"},
         headers={"Authorization": "Bearer wrong-token"},
         timeout=10.0,
     )
@@ -176,12 +220,12 @@ def test_auth_wrong_token(client: httpx.Client) -> Result:
     )
 
 
-def test_html_small(client: httpx.Client) -> Result:
+def test_html_small() -> Result:
     """Small HTML paste → markdown with frontmatter."""
     name = "html_small_convert"
     r = _post(
-        client, "/api/convert/html",
-        json={"html": "<h1>Test Title</h1><p>Hello world, senji works.</p>"},
+        "/api/convert/html",
+        json_data={"html": "<h1>Test Title</h1><p>Hello world, senji works.</p>"},
         headers=AUTH,
         timeout=TIMEOUT,
     )
@@ -210,7 +254,7 @@ def test_html_small(client: httpx.Client) -> Result:
     return Result(name, True, f"frontmatter + content OK ({len(md)} chars)")
 
 
-def test_html_large(client: httpx.Client) -> Result:
+def test_html_large() -> Result:
     """Large HTML (~600 KB) must not trigger PayloadTooLargeError.
 
     Regression test for: express body-parser 100 KB default limit.
@@ -222,8 +266,8 @@ def test_html_large(client: httpx.Client) -> Result:
     assert len(big_html) > LARGE_HTML_SIZE, f"test data too small: {len(big_html)}"
 
     r = _post(
-        client, "/api/convert/html",
-        json={"html": big_html},
+        "/api/convert/html",
+        json_data={"html": big_html},
         headers=AUTH,
         timeout=TIMEOUT,
     )
@@ -247,12 +291,12 @@ def test_html_large(client: httpx.Client) -> Result:
     )
 
 
-def test_url_convert(client: httpx.Client, url: str = "https://example.com") -> Result:
+def test_url_convert(url: str = "https://example.com") -> Result:
     """URL conversion returns markdown with frontmatter."""
     name = f"url_convert({url})"
     r = _post(
-        client, "/api/convert/url",
-        json={"url": url},
+        "/api/convert/url",
+        json_data={"url": url},
         headers=AUTH,
         timeout=TIMEOUT,
     )
@@ -278,12 +322,12 @@ def test_url_convert(client: httpx.Client, url: str = "https://example.com") -> 
     return Result(name, True, f"OK — {len(md)} chars, title: {body.get('title', '?')!r}")
 
 
-def test_empty_html_422(client: httpx.Client) -> Result:
+def test_empty_html_422() -> Result:
     """Empty HTML must return 422 Unprocessable Entity."""
     name = "html_empty_422"
     r = _post(
-        client, "/api/convert/html",
-        json={"html": ""},
+        "/api/convert/html",
+        json_data={"html": ""},
         headers=AUTH,
         timeout=10.0,
     )
@@ -296,12 +340,12 @@ def test_empty_html_422(client: httpx.Client) -> Result:
     )
 
 
-def test_invalid_url_error(client: httpx.Client) -> Result:
+def test_invalid_url_error() -> Result:
     """Unreachable URL must return an error (not 200)."""
     name = "url_invalid_returns_error"
     r = _post(
-        client, "/api/convert/url",
-        json={"url": "https://this.domain.absolutely.does.not.exist.invalid"},
+        "/api/convert/url",
+        json_data={"url": "https://this.domain.absolutely.does.not.exist.invalid"},
         headers=AUTH,
         timeout=TIMEOUT,
     )
@@ -350,22 +394,21 @@ def run(url: str, verbose: bool) -> int:
     print(f"\n\033[1m=== senji agentic self-test ===\033[0m")
     print(f"Gateway: {GATEWAY_URL}  Token: {TOKEN}\n")
 
-    with httpx.Client() as client:
-        gw = test_gateway_reachable(client)
-        suite.add(gw)
-        if not gw.passed:
-            print("\n[ABORT] Gateway unreachable — skipping remaining tests.")
-            print(suite.summary())
-            return 1
+    gw = test_gateway_reachable()
+    suite.add(gw)
+    if not gw.passed:
+        print("\n[ABORT] Gateway unreachable — skipping remaining tests.")
+        print(suite.summary())
+        return 1
 
-        suite.add(test_readability_direct())
-        suite.add(test_auth_no_token(client))
-        suite.add(test_auth_wrong_token(client))
-        suite.add(test_html_small(client))
-        suite.add(test_html_large(client))
-        suite.add(test_empty_html_422(client))
-        suite.add(test_url_convert(client, url))
-        suite.add(test_invalid_url_error(client))
+    suite.add(test_readability_direct())
+    suite.add(test_auth_no_token())
+    suite.add(test_auth_wrong_token())
+    suite.add(test_html_small())
+    suite.add(test_html_large())
+    suite.add(test_empty_html_422())
+    suite.add(test_url_convert(url))
+    suite.add(test_invalid_url_error())
 
     print(f"\n{suite.summary()}")
     if verbose and suite.failed > 0:
