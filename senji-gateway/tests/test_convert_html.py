@@ -60,7 +60,7 @@ async def test_html_snippet_auto_wrapped(mock_readability) -> None:
 
 
 @pytest.mark.asyncio
-async def test_empty_html_returns_200_empty_markdown() -> None:
+async def test_empty_html_returns_422() -> None:
     async with build_client() as client:
         response = await client.post(
             "/api/convert/html",
@@ -68,12 +68,10 @@ async def test_empty_html_returns_200_empty_markdown() -> None:
             headers=AUTH,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 422
     data = response.json()
-    assert data["markdown"] == ""
-    assert data["title"] == "Untitled"
-    assert data["source"] == "paste"
-    assert data["media"] == []
+    assert data["error"] == "empty_html"
+    assert data["detail"] == "HTML content is required"
 
 
 @pytest.mark.asyncio

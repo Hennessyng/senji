@@ -1,0 +1,15 @@
+[Unit]
+Description=Senji deploy webhook receiver
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/webhook -hooks /opt/stacks/homelab/webhook/hooks.json -port 9000 -verbose
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

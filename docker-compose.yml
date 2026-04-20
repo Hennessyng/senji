@@ -2,7 +2,7 @@ services:
   gateway:
     build: ./senji-gateway
     ports:
-      - "8000:8000"
+      - "7878:8000"
     env_file: .env
     restart: unless-stopped
     depends_on:
@@ -37,7 +37,7 @@ services:
           memory: 256M
     networks: [senji-net]
   docling:
-    image: ghcr.io/docling-project/docling-serve:1.16.1
+    image: ghcr.io/docling-project/docling-serve:latest
     expose: ["5001"]
     restart: unless-stopped
     healthcheck:

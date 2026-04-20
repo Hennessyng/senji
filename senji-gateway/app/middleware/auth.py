@@ -9,8 +9,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
         self.token = token
 
     async def dispatch(self, request: Request, call_next):
-        # Skip auth for health check and static files
-        if request.url.path in ("/health", "/") or request.url.path.startswith("/static"):
+        if not request.url.path.startswith("/api/"):
             return await call_next(request)
 
         auth = request.headers.get("Authorization")

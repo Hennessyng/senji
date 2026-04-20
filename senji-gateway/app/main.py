@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -23,4 +24,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# Mount static files (dashboard) from the static directory
+static_dir = Path(__file__).parent.parent / "static"
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")

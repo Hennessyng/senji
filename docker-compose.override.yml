@@ -1,0 +1,15 @@
+# Dev override — auto-loaded by `docker compose up`
+# Hot-reload for gateway (uvicorn --reload) and readability (node --watch)
+# Source dirs mounted so edits take effect without rebuild.
+services:
+  gateway:
+    build:
+      context: ./senji-gateway
+    volumes:
+      - ./senji-gateway/app:/app/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  readability:
+    volumes:
+      - ./senji-readability/src:/app/src
+    command: ["node", "--watch", "src/index.js"]

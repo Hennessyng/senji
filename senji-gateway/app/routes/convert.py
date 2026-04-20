@@ -11,6 +11,7 @@ from app.services.docling_client import ALLOWED_EXTENSIONS
 from app.services.docling_client import convert_file as convert_file_svc
 from app.services.fetcher import fetch_url
 from app.services.frontmatter import prepend_frontmatter
+from app.services.media import extract_and_download_images
 from app.services.readability_client import convert_html
 
 logger = logging.getLogger("senji.routes.convert")
@@ -44,6 +45,8 @@ async def convert_url(body: ConvertURLRequest, request: Request) -> ConvertRespo
             content={"error": "fetch_error", "detail": str(exc)},
         )
 
+    _, media = await extract_and_download_images(result.html, result.final_url)
+
     try:
         readable = await convert_html(settings.readability_url, result.html)
     except (httpx.ConnectError, httpx.TimeoutException) as exc:
@@ -63,7 +66,7 @@ async def convert_url(body: ConvertURLRequest, request: Request) -> ConvertRespo
         ),
         title=readable.title,
         source=result.final_url,
-        media=[],
+        media=media,
     )
 
 
@@ -75,8 +78,9 @@ async def convert_html_endpoint(
     html = body.html
 
     if not html.strip():
-        return ConvertResponse(
-            markdown="", title="Untitled", source=body.source_url or "paste", media=[]
+        return JSONResponse(
+            status_code=422,
+            content={"error": "empty_html", "detail": "HTML content is required"},
         )
 
     if "<html" not in html.lower() and "<body" not in html.lower():

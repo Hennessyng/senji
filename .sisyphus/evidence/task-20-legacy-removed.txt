@@ -1,6 +1,0 @@
-T20 Cleanup — completed
-- shortcuts/ directory removed
-- References check: none found
-- .env.example updated with SENJI_TOKEN, DOCLING_URL, READABILITY_URL
-- git commit applied
-- git tag v0.1.0 applied

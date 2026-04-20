@@ -1,26 +1,26 @@
 const root = document.documentElement;
 const themeToggle = document.getElementById("theme-toggle");
 const errorBanner = document.getElementById("error-banner");
-const resultsSection = document.getElementById("results");
+const errorMessage = document.getElementById("error-message");
+const resultsSection = document.getElementById("results-area");
 const resultsHeading = document.getElementById("results-heading");
-const resultsMeta = document.getElementById("results-meta");
+const resultsMeta = document.getElementById("result-metadata");
 const markdownOutput = document.getElementById("markdown-output");
 const copyButton = document.getElementById("copy-btn");
 const downloadButton = document.getElementById("download-btn");
-const urlForm = document.getElementById("url-form");
 const urlInput = document.getElementById("url-input");
 const urlConvertButton = document.getElementById("url-convert-btn");
 
 const tabs = [
-  document.getElementById("btn-url"),
-  document.getElementById("btn-upload"),
-  document.getElementById("btn-paste"),
+  document.getElementById("url-tab"),
+  document.getElementById("upload-tab"),
+  document.getElementById("paste-tab"),
 ];
 
 const panels = [
-  document.getElementById("tab-url"),
-  document.getElementById("tab-upload"),
-  document.getElementById("tab-paste"),
+  document.getElementById("url-panel"),
+  document.getElementById("upload-panel"),
+  document.getElementById("paste-panel"),
 ];
 
 const THEME_KEY = "senji_theme";
@@ -43,7 +43,7 @@ if (!authToken) {
 initializeTheme();
 initializeTabs();
 initializeResultsActions();
-urlForm.addEventListener("submit", handleUrlConvert);
+urlConvertButton.addEventListener("click", handleUrlConvert);
 
 function initializeTheme() {
   const storedTheme = localStorage.getItem(THEME_KEY);
@@ -77,7 +77,7 @@ function setActiveTab(activeId) {
   tabs.forEach((tab, index) => {
     const isActive = tab.id === activeId;
     tab.setAttribute("aria-selected", String(isActive));
-    panels[index].hidden = !isActive;
+    panels[index].style.display = isActive ? "block" : "none";
   });
 }
 
@@ -110,8 +110,7 @@ function initializeResultsActions() {
   });
 }
 
-async function handleUrlConvert(event) {
-  event.preventDefault();
+async function handleUrlConvert() {
   hideError();
 
   const url = urlInput.value.trim();
@@ -162,7 +161,7 @@ function renderResults(payload) {
   const mediaCount = Array.isArray(payload.media) ? payload.media.length : 0;
   const source = payload.source || urlInput.value.trim();
   resultsMeta.textContent = `Source: ${source} · Media items: ${mediaCount}`;
-  resultsSection.hidden = false;
+  resultsSection.style.display = "block";
 }
 
 function setLoadingState(isLoading) {
@@ -173,13 +172,13 @@ function setLoadingState(isLoading) {
 }
 
 function showError(message) {
-  errorBanner.textContent = message;
-  errorBanner.hidden = false;
+  errorMessage.textContent = message;
+  errorBanner.style.display = "block";
 }
 
 function hideError() {
-  errorBanner.hidden = true;
-  errorBanner.textContent = "";
+  errorBanner.style.display = "none";
+  errorMessage.textContent = "";
 }
 
 function ensureToken() {
@@ -265,8 +264,10 @@ function slugify(value) {
 // --- Upload Tab ---
 const dropZone = document.getElementById("drop-zone");
 const fileInput = document.getElementById("file-input");
-const fileNameDisplay = document.getElementById("file-name-display");
-const fileConvertBtn = document.getElementById("file-convert-btn");
+const fileInfo = document.getElementById("file-info");
+const fileNameDisplay = document.getElementById("file-name");
+const fileSizeDisplay = document.getElementById("file-size");
+const fileConvertBtn = document.getElementById("upload-convert-btn");
 
 const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".pptx"]);
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -303,8 +304,10 @@ function setSelectedFile(file) {
     return;
   }
   selectedFile = file;
-  fileNameDisplay.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
-  fileNameDisplay.hidden = false;
+  fileNameDisplay.textContent = file.name;
+  fileSizeDisplay.textContent = `${(file.size / 1024 / 1024).toFixed(1)} MB`;
+  fileInfo.style.display = "block";
+  fileConvertBtn.style.display = "block";
   fileConvertBtn.disabled = false;
   hideError();
 }
@@ -386,10 +389,12 @@ function clearAll() {
   pasteInput.value = "";
   selectedFile = null;
   fileNameDisplay.textContent = "";
-  fileNameDisplay.hidden = true;
+  fileSizeDisplay.textContent = "";
+  fileInfo.style.display = "none";
+  fileConvertBtn.style.display = "none";
   fileConvertBtn.disabled = true;
   resultsArea.style.display = "none";
-  resultsContent.querySelector("code").textContent = "";
+  markdownOutput.textContent = "";
   currentMarkdown = "";
   currentTitle = "markdown-result";
   hideError();
@@ -401,7 +406,7 @@ document.addEventListener("keydown", (e) => {
   if (!(e.metaKey || e.ctrlKey)) return;
   const activeTab = document.querySelector('.tab-button[aria-selected="true"]');
   if (!activeTab) return;
-  if (activeTab.id === "url-tab") urlConvertButton.click();
+  if (activeTab.id === "url-tab") handleUrlConvert();
   else if (activeTab.id === "paste-tab") pasteConvertBtn.click();
   else if (activeTab.id === "upload-tab" && selectedFile) fileConvertBtn.click();
 });

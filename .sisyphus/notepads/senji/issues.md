@@ -1,3 +1,0 @@
-# Senji — Issues
-
-(none yet)

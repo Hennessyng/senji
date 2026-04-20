@@ -1,5 +1,0 @@
-T16 Upload Tab — completed
-- index.html: upload panel placeholder replaced with real drop zone + file input
-- app.js: upload tab JS appended (setSelectedFile, handleFileConvert, drag-drop events)
-- style.css: drop-zone styles appended
-- Validation: .pdf/.docx/.pptx only, max 50MB client-side
