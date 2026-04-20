@@ -193,88 +193,152 @@ cd senji-gateway && python -m pytest tests/ -v
 
 ## CI/CD — GitHub Actions + Webhook
 
-No SSH needed. VM pulls on every push to `main`. Cloudflare Tunnel secures the webhook.
-
-### Architecture
+Every push to `main` triggers: unit tests → webhook → VM pulls + rebuilds + self-test.
+No SSH exposed to the internet. Cloudflare Tunnel secures the webhook endpoint.
 
 ```
-git push → GitHub Actions (unit tests) → POST https://deploy.myloft.cloud/hooks/deploy-senji
-                                                       ↓ Cloudflare Tunnel
-                                              VM webhook receiver (port 9000)
-                                                       ↓
-                                              scripts/deploy.sh
-                                              git pull → docker compose up → self-test
+git push main
+    ↓
+GitHub Actions — runs unit tests
+    ↓ (on pass)
+POST https://deploy.myloft.cloud/hooks/deploy-senji
+    ↓ Cloudflare Tunnel
+VM port 9000 — adnanh/webhook (systemd service)
+    ↓
+scripts/deploy.sh
+    git pull → docker compose up --build → health check → agentic_self_test.py
+    ↓ (on self-test fail)
+    auto-rollback: git stash + rebuild previous version
 ```
 
-### Step 1 — VM: install webhook binary
+### Prerequisites
+
+- Senji repo cloned to `/opt/stacks/homelab` on the VM (see [Deploy on Proxmox](#deploy-on-proxmox))
+- `adnanh/webhook` binary available on the VM
+
+### Step 1 — VM: install the webhook binary
+
+SSH into your Proxmox VM, then:
 
 ```bash
-apt install webhook          # Debian/Ubuntu
-# or download binary:
-# https://github.com/adnanh/webhook/releases
+apt install webhook
+webhook -version    # should print: webhook version X.Y.Z
 ```
 
-### Step 2 — VM: set the webhook secret
-
-Edit `webhook/hooks.json` — replace the placeholder:
+If `apt install webhook` gives an old version, grab the latest binary from
+[github.com/adnanh/webhook/releases](https://github.com/adnanh/webhook/releases):
 
 ```bash
-cd /opt/stacks/homelab
-# Generate a strong secret
+wget https://github.com/adnanh/webhook/releases/download/2.8.1/webhook-linux-amd64.tar.gz
+tar -xzf webhook-linux-amd64.tar.gz
+mv webhook-linux-amd64/webhook /usr/local/bin/webhook
+webhook -version
+```
+
+### Step 2 — VM: generate and set the webhook secret
+
+```bash
+# Generate a strong secret — copy the output
 openssl rand -hex 32
-# Paste it into webhook/hooks.json → "value": "<your-secret>"
 ```
 
-### Step 3 — VM: install and start the systemd service
+Open `webhook/hooks.json` and replace the placeholder with your secret:
 
 ```bash
-cp /opt/stacks/homelab/webhook/senji-webhook.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable --now senji-webhook
-
-# Verify it's listening
-systemctl status senji-webhook
-curl -s http://localhost:9000/hooks/deploy-senji  # should return 400 (missing secret = expected)
+nano /opt/stacks/homelab/webhook/hooks.json
+# Find: "REPLACE_WITH_YOUR_WEBHOOK_SECRET"
+# Replace with your generated secret
+# Save: Ctrl+O → Enter → Ctrl+X
 ```
 
-### Step 4 — VM: make deploy script executable
+Or with a one-liner (replace `YOUR_SECRET_HERE`):
+
+```bash
+SECRET="YOUR_SECRET_HERE"
+sed -i "s/REPLACE_WITH_YOUR_WEBHOOK_SECRET/$SECRET/" \
+  /opt/stacks/homelab/webhook/hooks.json
+```
+
+### Step 3 — VM: make the deploy script executable
 
 ```bash
 chmod +x /opt/stacks/homelab/scripts/deploy.sh
 ```
 
-### Step 5 — Cloudflare Tunnel: add the deploy subdomain
+### Step 4 — VM: install and start the systemd service
 
-In Cloudflare Zero Trust → Tunnels → your tunnel → Public Hostname → Add:
+```bash
+cp /opt/stacks/homelab/webhook/senji-webhook.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now senji-webhook
+```
 
-| Subdomain | Domain | Service |
-|---|---|---|
-| `deploy` | `myloft.cloud` | `http://localhost:9000` |
+Verify it started:
 
-### Step 6 — GitHub: add secrets
+```bash
+systemctl status senji-webhook
+# Should show: Active: active (running)
 
-In your GitHub repo → Settings → Secrets and variables → Actions → New secret:
+curl -s http://localhost:9000/hooks/deploy-senji
+# Expected: {"error":"Hook rules were not satisfied."} — correct, secret is missing
+```
+
+### Step 5 — Cloudflare Tunnel: expose the webhook
+
+In [Cloudflare Zero Trust](https://one.dash.cloudflare.com) → Networks → Tunnels → your tunnel → Edit → Public Hostnames → Add a public hostname:
+
+| Field | Value |
+|---|---|
+| Subdomain | `deploy` |
+| Domain | `myloft.cloud` |
+| Type | `HTTP` |
+| URL | `localhost:9000` |
+
+Save. Test from your Mac:
+
+```bash
+curl -s https://deploy.myloft.cloud/hooks/deploy-senji
+# Expected: {"error":"Hook rules were not satisfied."} — tunnel is working
+```
+
+### Step 6 — GitHub: add the webhook secret
+
+In your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
 
 | Name | Value |
 |---|---|
-| `WEBHOOK_SECRET` | the secret from Step 2 |
+| `WEBHOOK_SECRET` | your secret from Step 2 |
 
-### Step 7 — push `.github/workflows/deploy.yml`
+### Step 7 — trigger a deploy
 
-The workflow is already in the repo at `.github/workflows/deploy.yml`. Push to `main` to activate.
-
-### Verify
+The GitHub Actions workflow (`.github/workflows/deploy.yml`) is already in the repo.
+Push any commit to `main` to trigger it:
 
 ```bash
-# Check webhook logs live
+git commit --allow-empty -m "chore: trigger first CI deploy"
+git push origin main
+```
+
+Watch it run at `https://github.com/Hennessyng/senji/actions`.
+
+### Verify the deploy
+
+On the VM:
+
+```bash
+# Live webhook logs
 journalctl -u senji-webhook -f
 
-# Manually trigger (from your Mac, to test)
-curl -f -X POST https://deploy.myloft.cloud/hooks/deploy-senji \
-  -H "X-Webhook-Secret: <your-secret>"
-
-# Check deploy log on VM
+# Live deploy log (git pull, docker build, self-test output)
 tail -f /var/log/senji-deploy.log
+```
+
+Manual trigger from Mac (useful for testing without a code push):
+
+```bash
+curl -f -X POST https://deploy.myloft.cloud/hooks/deploy-senji \
+  -H "X-Webhook-Secret: YOUR_SECRET_HERE"
+# Returns: Deploy triggered
 ```
 
 ---
