@@ -13,6 +13,14 @@ cd "$REPO"
 log "Pulling latest code"
 git pull --ff-only
 
+# Generate live hooks.json with real secret from .env
+set -o allexport; source "$REPO/.env"; set +o allexport
+sed "s/REPLACE_WITH_YOUR_WEBHOOK_SECRET/$WEBHOOK_SECRET/" \
+  "$REPO/webhook/hooks.json" > /etc/senji-hooks-live.json
+log "Generated live hooks.json"
+systemctl restart senji-webhook
+log "Restarted webhook service"
+
 log "Rebuilding gateway and readability"
 docker compose up -d --build gateway readability
 
@@ -32,7 +40,6 @@ for i in $(seq 1 12); do
 done
 
 log "Running self-test"
-set -o allexport; source "$REPO/.env"; set +o allexport
 if python3 "$REPO/tests/agentic_self_test.py" >> "$LOG" 2>&1; then
     log "Self-test passed — deploy complete"
 else

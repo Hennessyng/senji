@@ -1,7 +1,10 @@
 [
   {
     "id": "deploy-senji",
-    "execute-command": "/opt/stacks/homelab/senji/scripts/deploy.sh",
+    "execute-command": "/bin/bash",
+    "pass-arguments-to-command": [
+      { "source": "string", "name": "/opt/stacks/homelab/senji/scripts/deploy.sh" }
+    ],
     "command-working-directory": "/opt/stacks/homelab/senji",
     "response-message": "Deploy triggered",
     "trigger-rule": {
