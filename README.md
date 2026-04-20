@@ -1,5 +1,5 @@
 # Senji
-Version: 20260420-01
+Version: 20260421-01
 
 Self-hosted web clipper. Converts URLs, HTML, PDFs, and DOCX files to clean Obsidian-formatted markdown. Trigger from iOS/macOS Share Sheet via Apple Shortcuts.
 
