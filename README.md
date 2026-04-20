@@ -242,7 +242,7 @@ webhook -version
 openssl rand -hex 32
 ```
 
-Open `webhook/hooks.json` and replace the placeholder with your secret:
+The file `webhook/hooks.json` is already in the repo (cloned in Step 1 of [Deploy on Proxmox](#deploy-on-proxmox)). Edit it to set your secret:
 
 ```bash
 nano /opt/stacks/homelab/webhook/hooks.json
