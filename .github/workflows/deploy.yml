@@ -36,5 +36,6 @@ jobs:
             --max-time 300 \
             -X POST "https://deploy.myloft.cloud/hooks/deploy-senji" \
             -H "X-Webhook-Secret: ${{ secrets.WEBHOOK_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -d '{}'
         timeout-minutes: 6
