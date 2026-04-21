@@ -61,6 +61,24 @@ def _magic(output_name: str, output_uuid: str) -> dict:
     }
 
 
+def _magic_key(output_name: str, output_uuid: str, dict_key: str) -> dict:
+    """Reference an action output's dictionary key via Aggrandizements."""
+    return {
+        "Value": {
+            "OutputName": output_name,
+            "OutputUUID": output_uuid,
+            "Type": "ActionOutput",
+            "Aggrandizements": [
+                {
+                    "Type": "WFDictionaryValueVariableAggrandizement",
+                    "DictionaryKey": dict_key,
+                }
+            ],
+        },
+        "WFSerializationType": "WFTextTokenAttachment",
+    }
+
+
 def _var(name: str) -> dict:
     return {
         "Value": {"Type": "Variable", "VariableName": name},
@@ -86,10 +104,31 @@ def _dict_value(*kv_pairs: tuple) -> dict:
     }
 
 
+def _magic_key_text(prefix: str, output_name: str, output_uuid: str, dict_key: str, suffix: str = "") -> dict:
+    s = prefix + _OCHAR + suffix
+    return {
+        "Value": {
+            "string": s,
+            "attachmentsByRange": {
+                f"{{{len(prefix)}, 1}}": {
+                    "OutputName": output_name,
+                    "OutputUUID": output_uuid,
+                    "Type": "ActionOutput",
+                    "Aggrandizements": [
+                        {
+                            "Type": "WFDictionaryValueVariableAggrandizement",
+                            "DictionaryKey": dict_key,
+                        }
+                    ],
+                },
+            },
+        },
+        "WFSerializationType": "WFTextTokenString",
+    }
+
+
 def _build_actions(endpoint: str, token: str, vault: str) -> list[dict]:
     u_http = _uid()
-    u_get_md = _uid()
-    u_get_title = _uid()
     u_filename = _uid()
 
     return [
@@ -111,57 +150,27 @@ def _build_actions(endpoint: str, token: str, vault: str) -> list[dict]:
             },
         },
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.getdictionaryvalue",
-            "WFWorkflowActionParameters": {
-                "UUID": u_get_md,
-                "WFDictionaryKey": "markdown",
-                "WFInput": _magic("URL Results", u_http),
-            },
-        },
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
-            "WFWorkflowActionParameters": {
-                "WFVariableName": "Markdown",
-                "WFInput": _magic("Dictionary Value", u_get_md),
-            },
-        },
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.getdictionaryvalue",
-            "WFWorkflowActionParameters": {
-                "UUID": u_get_title,
-                "WFDictionaryKey": "title",
-                "WFInput": _magic("URL Results", u_http),
-            },
-        },
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
-            "WFWorkflowActionParameters": {
-                "WFVariableName": "Title",
-                "WFInput": _magic("Dictionary Value", u_get_title),
-            },
-        },
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.text",
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
             "WFWorkflowActionParameters": {
                 "UUID": u_filename,
-                "WFTextActionText": _text_with_var("", "Title", ".md"),
+                "WFTextActionText": _magic_key_text("", "URL Results", u_http, "title", ".md"),
             },
         },
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.savefile",
+            "WFWorkflowActionIdentifier": "is.workflow.actions.documentpicker.save",
             "WFWorkflowActionParameters": {
-                "WFInput": _var("Markdown"),
-                "WFFileDestinationPath": f"Obsidian/{vault}/Clippings",
+                "WFInput": _magic_key("URL Results", u_http, "markdown"),
+                "WFFileDestinationPath": _text(f"Obsidian/{vault}/Clippings"),
                 "WFFilename": _magic("Text", u_filename),
-                "SaveNotAskEachTime": True,
-                "SelectMultiple": False,
+                "WFSaveFileOverwrite": True,
+                "WFAskWhereToSave": False,
             },
         },
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
             "WFWorkflowActionParameters": {
                 "WFNotificationActionTitle": _text("Saved to Obsidian \u2713"),
-                "WFNotificationActionBody": _var("Title"),
+                "WFNotificationActionBody": _magic_key("URL Results", u_http, "title"),
                 "WFNotificationActionSound": False,
             },
         },
@@ -180,7 +189,7 @@ def build_shortcut(endpoint: str, token: str, vault: str) -> dict:
             "WFWorkflowIconStartColor": 946986751,
         },
         "WFWorkflowImportQuestions": [],
-        "WFWorkflowTypes": ["NCWidget", "WatchKit"],
+        "WFWorkflowTypes": ["NCWidget", "WatchKit", "ActionExtension"],
         "WFWorkflowActions": _build_actions(endpoint, token, vault),
     }
 
