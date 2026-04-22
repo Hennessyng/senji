@@ -136,6 +136,12 @@ async def convert_file_endpoint(
             status_code=504,
             content={"error": "docling_timeout", "detail": str(exc)},
         )
+    except httpx.HTTPStatusError as exc:
+        logger.error("Docling HTTP error: %s → %s", exc.response.status_code, exc.response.text)
+        return JSONResponse(
+            status_code=502,
+            content={"error": "docling_error", "detail": f"Docling returned {exc.response.status_code}"},
+        )
 
     return ConvertResponse(
         markdown=_build_markdown(

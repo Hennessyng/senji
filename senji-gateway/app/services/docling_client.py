@@ -49,7 +49,6 @@ async def convert_file(
         response = await client.post(
             f"{docling_url}/v1/convert/file",
             files={"files": (filename, file_bytes)},
-            data={"to_formats": '["md"]'},
         )
         response.raise_for_status()
 

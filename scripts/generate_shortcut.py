@@ -25,7 +25,7 @@ from pathlib import Path
 
 DEFAULT_ENDPOINT = "https://markdown.myloft.cloud/api/convert/url"
 DEFAULT_TOKEN = "dev-token"
-DEFAULT_VAULT = "SeconBrain"
+DEFAULT_VAULT = "SecondBrain"
 
 _OCHAR = "\ufffc"
 
@@ -61,23 +61,6 @@ def _magic(output_name: str, output_uuid: str) -> dict:
     }
 
 
-def _magic_key(output_name: str, output_uuid: str, dict_key: str) -> dict:
-    """Reference an action output's dictionary key via Aggrandizements."""
-    return {
-        "Value": {
-            "OutputName": output_name,
-            "OutputUUID": output_uuid,
-            "Type": "ActionOutput",
-            "Aggrandizements": [
-                {
-                    "Type": "WFDictionaryValueVariableAggrandizement",
-                    "DictionaryKey": dict_key,
-                }
-            ],
-        },
-        "WFSerializationType": "WFTextTokenAttachment",
-    }
-
 
 def _var(name: str) -> dict:
     return {
@@ -88,8 +71,13 @@ def _var(name: str) -> dict:
 
 def _ext_input() -> dict:
     return {
-        "Value": {"Type": "ExtensionInput"},
-        "WFSerializationType": "WFTextTokenAttachment",
+        "Value": {
+            "string": _OCHAR,
+            "attachmentsByRange": {
+                "{0, 1}": {"Type": "ExtensionInput"},
+            },
+        },
+        "WFSerializationType": "WFTextTokenString",
     }
 
 
@@ -104,7 +92,8 @@ def _dict_value(*kv_pairs: tuple) -> dict:
     }
 
 
-def _magic_key_text(prefix: str, output_name: str, output_uuid: str, dict_key: str, suffix: str = "") -> dict:
+def _magic_text(prefix: str, output_name: str, output_uuid: str, suffix: str = "") -> dict:
+    """Embed an action output inside a text string (e.g. title + '.md')."""
     s = prefix + _OCHAR + suffix
     return {
         "Value": {
@@ -114,12 +103,6 @@ def _magic_key_text(prefix: str, output_name: str, output_uuid: str, dict_key: s
                     "OutputName": output_name,
                     "OutputUUID": output_uuid,
                     "Type": "ActionOutput",
-                    "Aggrandizements": [
-                        {
-                            "Type": "WFDictionaryValueVariableAggrandizement",
-                            "DictionaryKey": dict_key,
-                        }
-                    ],
                 },
             },
         },
@@ -127,11 +110,36 @@ def _magic_key_text(prefix: str, output_name: str, output_uuid: str, dict_key: s
     }
 
 
-def _build_actions(endpoint: str, token: str, vault: str) -> list[dict]:
+def _build_actions(endpoint: str, token: str, vault: str, debug: bool = False) -> list[dict]:
     u_http = _uid()
-    u_filename = _uid()
+    u_dict = _uid()
+    u_title_val = _uid()
+    u_md_val = _uid()
+    u_title_text = _uid()
+    u_md_text = _uid()
+    u_enc_title = _uid()
+    u_enc_md = _uid()
+    u_url = _uid()
 
-    return [
+    def _debug_show(label: str, source_uuid: str, source_name: str) -> list[dict]:
+        tmp = _uid()
+        return [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+                "WFWorkflowActionParameters": {
+                    "UUID": tmp,
+                    "WFTextActionText": _magic_text("", source_name, source_uuid),
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.showresult",
+                "WFWorkflowActionParameters": {
+                    "Text": _magic_text(f"{label}: ", "Text", tmp),
+                },
+            },
+        ]
+
+    actions = [
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
             "WFWorkflowActionParameters": {
@@ -139,7 +147,7 @@ def _build_actions(endpoint: str, token: str, vault: str) -> list[dict]:
                 "WFHTTPMethod": "POST",
                 "WFURL": endpoint,
                 "WFHTTPBodyType": "JSON",
-                "WFHTTPInputBody": _dict_value(
+                "WFJSONValues": _dict_value(
                     ("url", _ext_input()),
                 ),
                 "WFHTTPHeaders": _dict_value(
@@ -149,35 +157,142 @@ def _build_actions(endpoint: str, token: str, vault: str) -> list[dict]:
                 "WFShowWebView": False,
             },
         },
+    ]
+
+    if debug:
+        actions.extend(_debug_show("DEBUG 1: Raw API response", u_http, "Contents of URL"))
+
+    actions.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.detect.dictionary",
+            "WFWorkflowActionParameters": {
+                "UUID": u_dict,
+                "WFInput": _magic("Contents of URL", u_http),
+            },
+        },
+    )
+
+    if debug:
+        actions.extend(_debug_show("DEBUG 2: Parsed dictionary", u_dict, "Dictionary"))
+
+    actions.extend([
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+            "WFWorkflowActionParameters": {
+                "UUID": u_title_val,
+                "WFInput": _magic("Dictionary", u_dict),
+                "WFDictionaryKey": "title",
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+            "WFWorkflowActionParameters": {
+                "UUID": u_md_val,
+                "WFInput": _magic("Dictionary", u_dict),
+                "WFDictionaryKey": "markdown",
+            },
+        },
+    ])
+
+    if debug:
+        actions.extend(_debug_show("DEBUG 3: Extracted title", u_title_val, "Dictionary Value"))
+        actions.extend(_debug_show("DEBUG 4: Extracted markdown", u_md_val, "Dictionary Value"))
+
+    # Materialize title as text → URL-encode
+    actions.extend([
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
             "WFWorkflowActionParameters": {
-                "UUID": u_filename,
-                "WFTextActionText": _magic_key_text("", "URL Results", u_http, "title", ".md"),
+                "UUID": u_title_text,
+                "WFTextActionText": _magic_text("", "Dictionary Value", u_title_val),
             },
         },
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.documentpicker.save",
+            "WFWorkflowActionIdentifier": "is.workflow.actions.urlencode",
             "WFWorkflowActionParameters": {
-                "WFInput": _magic_key("URL Results", u_http, "markdown"),
-                "WFFileDestinationPath": _text(f"Obsidian/{vault}/Clippings"),
-                "WFFilename": _magic("Text", u_filename),
-                "WFSaveFileOverwrite": True,
-                "WFAskWhereToSave": False,
+                "UUID": u_enc_title,
+                "WFEncodeMode": "Encode",
+                "WFInput": _magic("Text", u_title_text),
+            },
+        },
+    ])
+
+    # Materialize markdown as text → URL-encode
+    actions.extend([
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {
+                "UUID": u_md_text,
+                "WFTextActionText": _magic_text("", "Dictionary Value", u_md_val),
             },
         },
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
+            "WFWorkflowActionIdentifier": "is.workflow.actions.urlencode",
             "WFWorkflowActionParameters": {
-                "WFNotificationActionTitle": _text("Saved to Obsidian \u2713"),
-                "WFNotificationActionBody": _magic_key("URL Results", u_http, "title"),
-                "WFNotificationActionSound": False,
+                "UUID": u_enc_md,
+                "WFEncodeMode": "Encode",
+                "WFInput": _magic("Text", u_md_text),
             },
         },
-    ]
+    ])
+
+    # Build obsidian:// URI with two embedded encoded variables
+    prefix = f"obsidian://new?vault={vault}&file=Clippings%2F"
+    middle = "&content="
+    suffix = "&overwrite=true"
+    url_string = prefix + _OCHAR + middle + _OCHAR + suffix
+    enc_title_pos = len(prefix)
+    enc_md_pos = len(prefix) + 1 + len(middle)
+
+    actions.append({
+        "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+        "WFWorkflowActionParameters": {
+            "UUID": u_url,
+            "WFTextActionText": {
+                "Value": {
+                    "string": url_string,
+                    "attachmentsByRange": {
+                        f"{{{enc_title_pos}, 1}}": {
+                            "OutputName": "URL Encoded Text",
+                            "OutputUUID": u_enc_title,
+                            "Type": "ActionOutput",
+                        },
+                        f"{{{enc_md_pos}, 1}}": {
+                            "OutputName": "URL Encoded Text",
+                            "OutputUUID": u_enc_md,
+                            "Type": "ActionOutput",
+                        },
+                    },
+                },
+                "WFSerializationType": "WFTextTokenString",
+            },
+        },
+    })
+
+    actions.append({
+        "WFWorkflowActionIdentifier": "is.workflow.actions.openurl",
+        "WFWorkflowActionParameters": {
+            "Show-WFInput": True,
+            "WFInput": _magic("Text", u_url),
+        },
+    })
+
+    if debug:
+        actions.extend(_debug_show("DEBUG 5: Obsidian URL", u_url, "Text"))
+
+    actions.append({
+        "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
+        "WFWorkflowActionParameters": {
+            "WFNotificationActionTitle": _text("Saved to Obsidian \u2713"),
+            "WFNotificationActionBody": _magic("Dictionary Value", u_title_val),
+            "WFNotificationActionSound": False,
+        },
+    })
+
+    return actions
 
 
-def build_shortcut(endpoint: str, token: str, vault: str) -> dict:
+def build_shortcut(endpoint: str, token: str, vault: str, debug: bool = False) -> dict:
     return {
         "WFWorkflowMinimumClientVersion": 900,
         "WFWorkflowMinimumClientVersionString": "900",
@@ -190,7 +305,7 @@ def build_shortcut(endpoint: str, token: str, vault: str) -> dict:
         },
         "WFWorkflowImportQuestions": [],
         "WFWorkflowTypes": ["NCWidget", "WatchKit", "ActionExtension"],
-        "WFWorkflowActions": _build_actions(endpoint, token, vault),
+        "WFWorkflowActions": _build_actions(endpoint, token, vault, debug=debug),
     }
 
 
@@ -217,9 +332,14 @@ def main() -> None:
         metavar="FILE",
         help="Output file path (default: senji-clipper.shortcut)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Add alert actions after each step for debugging",
+    )
     args = parser.parse_args()
 
-    data = build_shortcut(endpoint=args.endpoint, token=args.token, vault=args.vault)
+    data = build_shortcut(endpoint=args.endpoint, token=args.token, vault=args.vault, debug=args.debug)
 
     out = Path(args.output)
     with out.open("wb") as f:
