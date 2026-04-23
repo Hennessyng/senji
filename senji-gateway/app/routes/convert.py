@@ -7,8 +7,6 @@ from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from app.models.schemas import ConvertHTMLRequest, ConvertResponse, ConvertURLRequest
-from app.services.docling_client import ALLOWED_EXTENSIONS
-from app.services.docling_client import convert_file as convert_file_svc
 from app.services.fetcher import fetch_url
 from app.services.frontmatter import prepend_frontmatter
 from app.services.media import extract_and_download_images
@@ -110,48 +108,7 @@ async def convert_file_endpoint(
     request: Request,
     file: Annotated[UploadFile, File(...)],
 ) -> ConvertResponse | JSONResponse:
-    settings = request.app.state.settings
-    filename = file.filename or "upload"
-    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-
-    if ext not in ALLOWED_EXTENSIONS:
-        return JSONResponse(
-            status_code=415,
-            content={"error": "unsupported_type", "detail": "Allowed: pdf, docx, pptx"},
-        )
-
-    file_bytes = await file.read()
-
-    try:
-        result = await convert_file_svc(settings.docling_url, file_bytes, filename)
-    except httpx.ConnectError as exc:
-        logger.error("Docling unreachable: %s", exc)
-        return JSONResponse(
-            status_code=503,
-            content={"error": "docling_unavailable", "detail": str(exc)},
-        )
-    except httpx.TimeoutException as exc:
-        logger.error("Docling timeout: %s", exc)
-        return JSONResponse(
-            status_code=504,
-            content={"error": "docling_timeout", "detail": str(exc)},
-        )
-    except httpx.HTTPStatusError as exc:
-        logger.error("Docling HTTP error: %s → %s", exc.response.status_code, exc.response.text)
-        return JSONResponse(
-            status_code=502,
-            content={"error": "docling_error", "detail": f"Docling returned {exc.response.status_code}"},
-        )
-
-    return ConvertResponse(
-        markdown=_build_markdown(
-            result.markdown,
-            filename,
-            filename,
-            ext.lstrip("."),
-            convert_file_svc,
-        ),
-        title=filename,
-        source=filename,
-        media=[],
+    return JSONResponse(
+        status_code=501,
+        content={"error": "not_implemented", "detail": "File conversion service is no longer available"},
     )

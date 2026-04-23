@@ -10,7 +10,6 @@ not on every edge case (those belong in unit tests). This keeps E2E fast and rel
 Coverage:
 - URL conversion pipeline (fetch → readability → frontmatter)
 - HTML paste pipeline (paste content → readability → frontmatter)
-- File upload pipeline (upload PDF → docling → frontmatter)
 - Authentication validation
 - Error scenarios that would break the UI (service down, timeouts, invalid input)
 - Media handling (if media.py is implemented)
@@ -76,7 +75,7 @@ async def test_convert_html_paste_happy_path(api_client: httpx.AsyncClient, auth
 @pytest.mark.asyncio
 async def test_convert_pdf_upload_happy_path(api_client: httpx.AsyncClient, auth_headers: dict) -> None:
     """
-    E2E: Upload a PDF file, convert to markdown via Docling.
+    E2E: Upload a PDF file, convert to markdown via file conversion service.
     
     TODO: Implement this test
     
@@ -107,14 +106,13 @@ async def test_convert_url_without_auth_token(api_client: httpx.AsyncClient) -> 
 @pytest.mark.asyncio
 async def test_health_check_all_services_up(api_client: httpx.AsyncClient, base_url: str) -> None:
     """
-    E2E: Verify all downstream services are healthy (readability + docling).
+    E2E: Verify all downstream services are healthy (readability).
     
     TODO: Implement this test
     
     Questions to consider:
     - Should we test /health directly, or infer from service availability?
     - What constitutes "healthy"? (Just status 200, or check response structure?)
-    - Do we care if readability is down but docling is up? (Partial vs complete failure)
     """
     pytest.skip("TODO: Implement health check")
 
