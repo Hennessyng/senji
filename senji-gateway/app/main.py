@@ -7,6 +7,7 @@ from app.logging import setup_logging
 from app.middleware.auth import BearerAuthMiddleware
 from app.middleware.error_handler import RequestLoggingMiddleware, add_exception_handlers
 from app.routes.convert import router as convert_router
+from app.routes.ingest import router as ingest_router
 
 app = FastAPI(title="Senji Gateway")
 app.state.settings = settings
@@ -17,6 +18,7 @@ add_exception_handlers(app)
 setup_logging(settings.log_level)
 
 app.include_router(convert_router)
+app.include_router(ingest_router)
 
 
 @app.get("/health")

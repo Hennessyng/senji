@@ -1,10 +1,13 @@
 import os
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
 
-# E2E tests run against live Docker services on localhost:8000
-# Configured via environment variables for CI environments
+os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+os.environ.setdefault("SENJI_TOKEN", "dev-token")
+os.environ.setdefault("READABILITY_URL", "http://localhost:3000")
+
 BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:8000")
 AUTH_TOKEN = os.getenv("SENJI_TOKEN", "dev-token")
 
