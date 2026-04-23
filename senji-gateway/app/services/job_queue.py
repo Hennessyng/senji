@@ -1,13 +1,18 @@
 import asyncio
+import contextlib
 import json
 import logging
+import os
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import httpx
+import pymupdf
+import pymupdf4llm
 
 from app.errors import IngestError
 from app.services.trafilatura_service import extract_article
@@ -18,6 +23,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("senji.pics.job_queue")
 ingest_logger = logging.getLogger("senji.pics.ingest_url")
+ingest_file_logger = logging.getLogger("senji.pics.ingest_file")
 
 _FETCH_TIMEOUT_SECONDS = 10.0
 _FETCH_RETRIES = 3
@@ -278,10 +284,141 @@ class JobQueue:
                 exc_info=True,
             )
 
+    async def process_pdf_job(self, job_id: str) -> None:
+        job = self.get_status(job_id)
+        if job.type != "pdf" or not job.source_path:
+            raise ValueError(f"Job {job_id} is not a PDF ingest job")
+        if self._vault_writer is None:
+            raise RuntimeError("JobQueue has no vault_writer; cannot process PDF jobs")
+
+        self.mark_processing(job_id)
+        try:
+            pdf_path = Path(job.source_path)
+            markdown = pymupdf4llm.to_markdown(str(pdf_path))
+            if not markdown.strip():
+                raise IngestError("PDF extraction returned empty content")
+
+            page_count = 0
+            with pymupdf.open(str(pdf_path)) as doc:
+                page_count = doc.page_count
+
+            title = job.original_filename or "untitled"
+            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            slug = make_slug(title, date_prefix=date_str)
+            fm = {
+                "title": title,
+                "source": job.original_filename or "upload.pdf",
+                "date": date_str,
+                "type": "pdf",
+                "tags": job.tags,
+                "pages": page_count,
+            }
+            path = self._vault_writer.save_raw(slug, markdown, fm)
+            pdf_path.unlink(missing_ok=True)
+            self.mark_completed(job_id, files_written=[str(path)])
+            ingest_logger.info(
+                "PDF ingest complete",
+                extra={
+                    "job_id": job_id,
+                    "pdf_file": job.original_filename,
+                    "path": str(path),
+                },
+            )
+        except IngestError as exc:
+            detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
+            self.mark_failed(job_id, error=detail)
+            ingest_logger.error(
+                "PDF ingest failed",
+                extra={"job_id": job_id, "pdf_file": job.original_filename, "error": detail},
+            )
+        except Exception as exc:
+            self.mark_failed(job_id, error=str(exc))
+            ingest_logger.error(
+                "PDF ingest crashed",
+                extra={
+                    "job_id": job_id,
+                    "pdf_file": job.original_filename,
+                    "error": str(exc),
+                },
+                exc_info=True,
+            )
+
+    async def process_pdf_job(self, job_id: str) -> None:
+        job = self.get_status(job_id)
+        if job.type != "pdf" or not job.source_path:
+            raise ValueError(f"Job {job_id} is not a PDF ingest job")
+        if self._vault_writer is None:
+            raise RuntimeError("JobQueue has no vault_writer; cannot process PDF jobs")
+
+        self.mark_processing(job_id)
+        tmp_path = Path(job.source_path)
+        try:
+            try:
+                with pymupdf.open(str(tmp_path)) as doc:
+                    page_count = int(getattr(doc, "page_count", 0) or 0)
+                    markdown = pymupdf4llm.to_markdown(doc)
+            except Exception as exc:
+                raise IngestError("pymupdf4llm extraction failed", detail=str(exc)) from exc
+
+            if not markdown or not markdown.strip():
+                raise IngestError("pymupdf4llm returned empty content")
+
+            original = job.original_filename or tmp_path.name
+            title = Path(original).stem or "untitled"
+            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            slug = make_slug(title, date_prefix=date_str)
+            fm = {
+                "title": title,
+                "source": original,
+                "date": date_str,
+                "type": "pdf",
+                "tags": job.tags,
+                "pages": page_count,
+            }
+            path = self._vault_writer.save_raw(slug, markdown, fm)
+            self.mark_completed(job_id, files_written=[str(path)])
+            ingest_file_logger.info(
+                "PDF ingest complete",
+                extra={
+                    "job_id": job_id,
+                    "original": original,
+                    "pages": page_count,
+                    "path": str(path),
+                },
+            )
+        except IngestError as exc:
+            detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
+            self.mark_failed(job_id, error=detail)
+            ingest_file_logger.error(
+                "PDF ingest failed",
+                extra={
+                    "job_id": job_id,
+                    "original": job.original_filename,
+                    "error": detail,
+                },
+            )
+        except Exception as exc:
+            self.mark_failed(job_id, error=str(exc))
+            ingest_file_logger.error(
+                "PDF ingest crashed",
+                extra={
+                    "job_id": job_id,
+                    "original": job.original_filename,
+                    "error": str(exc),
+                },
+                exc_info=True,
+            )
+        finally:
+            with contextlib.suppress(OSError):
+                if tmp_path.exists():
+                    os.unlink(tmp_path)
+
     async def _dispatch_job(self, job_id: str) -> None:
         job = self.get_status(job_id)
         if job.type == "url" and self._vault_writer is not None:
             await self.process_url_job(job_id)
+        elif job.type == "pdf" and self._vault_writer is not None:
+            await self.process_pdf_job(job_id)
         else:
             self.mark_processing(job_id)
             await asyncio.sleep(0)

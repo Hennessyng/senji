@@ -16,6 +16,7 @@ _PLAN_SCHEMA_ORDER = (
     "language",
     "author",
     "description",
+    "pages",
 )
 
 
@@ -118,6 +119,8 @@ class VaultWriter:
             if key == "tags":
                 joined = ", ".join(f'"{_yaml_escape(str(t))}"' for t in val)
                 lines.append(f"tags: [{joined}]")
+            elif key == "pages" and isinstance(val, int):
+                lines.append(f"pages: {val}")
             else:
                 lines.append(f'{key}: "{_yaml_escape(str(val))}"')
         lines.append("---")

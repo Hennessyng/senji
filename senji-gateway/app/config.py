@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:8b"
     ollama_vision_model: str = "qwen2.5vl:7b"
     ollama_embed_model: str = "bge-m3"
+    max_file_size_mb: int = 50
 
 
 settings = Settings()

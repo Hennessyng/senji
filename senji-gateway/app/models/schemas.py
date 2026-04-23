@@ -41,3 +41,8 @@ class IngestUrlRequest(BaseModel):
 class IngestUrlResponse(BaseModel):
     job_id: str
     status: str
+
+
+class IngestFileResponse(BaseModel):
+    job_id: str
+    status: str
