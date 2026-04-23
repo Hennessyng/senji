@@ -46,3 +46,12 @@ class IngestUrlResponse(BaseModel):
 class IngestFileResponse(BaseModel):
     job_id: str
     status: str
+
+
+class QueryRequest(BaseModel):
+    question: str
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    sources: list[dict]

@@ -11,6 +11,7 @@ from app.middleware.auth import BearerAuthMiddleware
 from app.middleware.error_handler import RequestLoggingMiddleware, add_exception_handlers
 from app.routes.convert import router as convert_router
 from app.routes.ingest import router as ingest_router
+from app.routes.query import router as query_router
 from app.services.job_queue import JobQueue
 from app.services.vault_writer import VaultWriter
 
@@ -42,6 +43,7 @@ setup_logging(settings.log_level)
 
 app.include_router(convert_router)
 app.include_router(ingest_router)
+app.include_router(query_router)
 
 
 @app.get("/health")

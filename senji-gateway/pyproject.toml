@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-settings",
     "pymupdf4llm",
     "pymupdf",
+    "numpy",
 ]
 
 [project.optional-dependencies]

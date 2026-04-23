@@ -15,6 +15,7 @@ import pymupdf
 import pymupdf4llm
 
 from app.errors import IngestError
+from app.services.embedding_service import EmbeddingService
 from app.services.trafilatura_service import extract_article
 from app.utils.slugify import make_slug
 
@@ -205,6 +206,20 @@ class JobQueue:
             ).fetchall()
         return [r[0] for r in rows]
 
+    async def _generate_and_save_embedding(
+        self, wiki_path: Path, markdown: str, frontmatter: dict
+    ) -> None:
+        try:
+            embedding_svc = EmbeddingService()
+            embedding = await embedding_svc.embed_text(markdown)
+            EmbeddingService.save_embedding(wiki_path, embedding, frontmatter)
+            logger.debug("Embedding generated", extra={"path": str(wiki_path)})
+        except Exception as exc:
+            logger.warning(
+                "Failed to generate embedding",
+                extra={"path": str(wiki_path), "error": str(exc)},
+            )
+
     async def _fetch_html(self, url: str) -> str:
         last_exc: Exception | None = None
         for attempt in range(_FETCH_RETRIES):
@@ -264,6 +279,7 @@ class JobQueue:
                 "description": extracted.get("description"),
             }
             path = self._vault_writer.save_raw(slug, markdown, fm)
+            await self._generate_and_save_embedding(path, markdown, fm)
             self.mark_completed(job_id, files_written=[str(path)])
             ingest_logger.info(
                 "URL ingest complete",
@@ -376,6 +392,7 @@ class JobQueue:
                 "pages": page_count,
             }
             path = self._vault_writer.save_raw(slug, markdown, fm)
+            await self._generate_and_save_embedding(path, markdown, fm)
             self.mark_completed(job_id, files_written=[str(path)])
             ingest_file_logger.info(
                 "PDF ingest complete",
