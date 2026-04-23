@@ -6,7 +6,17 @@ class Settings(BaseSettings):
     readability_url: str = "http://readability:3000"
     log_level: str = "INFO"
     sqlite_db_path: str = "/opt/vault/jobs.db"
-    ollama_base_url: str = "http://10.1.1.222:11434"
+    ollama_base_url: str
+    vault_path: str = "/opt/vault"
+    ollama_model: str = "qwen3:8b"
+    ollama_vision_model: str = "qwen2.5vl:7b"
+    ollama_embed_model: str = "bge-m3"
 
 
 settings = Settings()
+
+VAULT_PATH = settings.vault_path
+OLLAMA_BASE_URL = settings.ollama_base_url
+OLLAMA_MODEL = settings.ollama_model
+OLLAMA_VISION_MODEL = settings.ollama_vision_model
+OLLAMA_EMBED_MODEL = settings.ollama_embed_model

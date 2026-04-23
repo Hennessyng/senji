@@ -7,3 +7,9 @@ pytest
 pytest-asyncio
 python-slugify
 unidecode
+trafilatura
+pymupdf4llm
+sentence-transformers
+aiosqlite
+respx
+pytest-httpx
