@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:8b"
     ollama_vision_model: str = "qwen2.5vl:7b"
     ollama_embed_model: str = "bge-m3"
+    embedding_model: str = "BAAI/bge-m3"
+    embedding_batch_size: int = 32
     max_file_size_mb: int = 50
 
 

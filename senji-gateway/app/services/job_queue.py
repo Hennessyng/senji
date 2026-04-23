@@ -18,8 +18,11 @@ import pymupdf
 import pymupdf4llm
 
 from app.config import settings
-from app.errors import IngestError, OllamaUnavailableError
+from app.errors import IngestError, OllamaUnavailableError, WikiError
+from app.services.embedding_service import EmbeddingService
+from app.services.index_service import append_to_index, append_to_log
 from app.services.trafilatura_service import extract_article
+from app.services.wiki_service import generate_wiki_entry
 from app.utils.slugify import make_slug
 
 if TYPE_CHECKING:
@@ -109,10 +112,12 @@ class JobQueue:
         db_path: str,
         vault_writer: "VaultWriter | None" = None,
         ollama_client: "OllamaClient | None" = None,
+        embedding_service: "EmbeddingService | None" = None,
     ) -> None:
         self._db_path = db_path
         self._vault_writer = vault_writer
         self._ollama_client = ollama_client
+        self._embedding_service = embedding_service
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
@@ -227,6 +232,41 @@ class JobQueue:
             ).fetchall()
         return [r[0] for r in rows]
 
+    async def _generate_and_save_wiki(
+        self,
+        slug: str,
+        title: str,
+        source: str,
+        content: str,
+        frontmatter: dict,
+        language: str = "en",
+    ) -> Path | None:
+        if self._ollama_client is None or self._vault_writer is None:
+            return None
+        try:
+            wiki_md = await generate_wiki_entry(
+                self._ollama_client,
+                title=title,
+                source=source,
+                content=content,
+                language=language or "en",
+            )
+        except (OllamaUnavailableError, WikiError) as exc:
+            logger.warning(
+                "Wiki generation skipped — continuing raw-only",
+                extra={"slug": slug, "source": source, "error_msg": str(exc)},
+            )
+            return None
+        except Exception as exc:
+            logger.warning(
+                "Wiki generation unexpected failure — continuing raw-only",
+                extra={"slug": slug, "source": source, "error_msg": str(exc)},
+            )
+            return None
+        wiki_fm = dict(frontmatter)
+        wiki_fm["date"] = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+        return self._vault_writer.save_wiki(slug, wiki_md, wiki_fm)
+
     async def _generate_and_save_embedding(
         self, wiki_path: Path, markdown: str, frontmatter: dict
     ) -> None:
@@ -301,11 +341,42 @@ class JobQueue:
             }
             path = self._vault_writer.save_raw(slug, markdown, fm)
             await self._generate_and_save_embedding(path, markdown, fm)
-            self.mark_completed(job_id, files_written=[str(path)])
+            wiki_attempted = self._ollama_client is not None
+            wiki_path = await self._generate_and_save_wiki(
+                slug=slug,
+                title=title,
+                source=job.source_url,
+                content=markdown,
+                frontmatter=fm,
+                language=extracted.get("language") or "en",
+            )
+            vault_path = str(self._vault_writer._root)
+            append_to_index(vault_path, job_id, slug, title, "url")
+            files_written = [str(path)] + ([str(wiki_path)] if wiki_path else [])
+            if wiki_attempted and wiki_path is None:
+                append_to_log(vault_path, job_id, slug, "url", "completed_raw_only", "")
+                self.mark_completed_raw_only(job_id, files=files_written)
+            else:
+                append_to_log(vault_path, job_id, slug, "url", "completed", "")
+                self.mark_completed(job_id, files_written=files_written)
             ingest_logger.info(
                 "URL ingest complete",
-                extra={"job_id": job_id, "url": job.source_url, "path": str(path)},
+                extra={
+                    "job_id": job_id,
+                    "url": job.source_url,
+                    "path": str(path),
+                    "wiki_path": str(wiki_path) if wiki_path else None,
+                },
             )
+            if self._embedding_service:
+                try:
+                    markdown_text = path.read_text(errors="replace").split("\n---\n", 1)[-1]
+                    await self._embedding_service.queue_embeddings(job_id, [markdown_text])
+                except Exception as _emb_exc:
+                    logger.warning(
+                        "Failed to queue embeddings",
+                        extra={"job_id": job_id, "error": str(_emb_exc)},
+                    )
         except IngestError as exc:
             detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
             self.mark_failed(job_id, error=detail)
@@ -414,7 +485,24 @@ class JobQueue:
             }
             path = self._vault_writer.save_raw(slug, markdown, fm)
             await self._generate_and_save_embedding(path, markdown, fm)
-            self.mark_completed(job_id, files_written=[str(path)])
+            wiki_attempted = self._ollama_client is not None
+            wiki_path = await self._generate_and_save_wiki(
+                slug=slug,
+                title=title,
+                source=original,
+                content=markdown,
+                frontmatter=fm,
+                language="en",
+            )
+            vault_path = str(self._vault_writer._root)
+            append_to_index(vault_path, job_id, slug, title, "pdf")
+            files_written = [str(path)] + ([str(wiki_path)] if wiki_path else [])
+            if wiki_attempted and wiki_path is None:
+                append_to_log(vault_path, job_id, slug, "pdf", "completed_raw_only", "")
+                self.mark_completed_raw_only(job_id, files=files_written)
+            else:
+                append_to_log(vault_path, job_id, slug, "pdf", "completed", "")
+                self.mark_completed(job_id, files_written=files_written)
             ingest_file_logger.info(
                 "PDF ingest complete",
                 extra={
@@ -424,6 +512,15 @@ class JobQueue:
                     "path": str(path),
                 },
             )
+            if self._embedding_service:
+                try:
+                    markdown_text = path.read_text(errors="replace").split("\n---\n", 1)[-1]
+                    await self._embedding_service.queue_embeddings(job_id, [markdown_text])
+                except Exception as _emb_exc:
+                    logger.warning(
+                        "Failed to queue embeddings",
+                        extra={"job_id": job_id, "error": str(_emb_exc)},
+                    )
         except IngestError as exc:
             detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
             self.mark_failed(job_id, error=detail)
@@ -509,6 +606,9 @@ class JobQueue:
             asset_path = asset_dir / f"{slug}{ext}"
             shutil.copy2(tmp_path, asset_path)
 
+            vault_path = str(self._vault_writer._root)
+            append_to_index(vault_path, job_id, slug, title, "image")
+            append_to_log(vault_path, job_id, slug, "image", "completed", "")
             self.mark_completed(
                 job_id, files_written=[str(md_path), str(asset_path)]
             )

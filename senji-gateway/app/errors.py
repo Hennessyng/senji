@@ -25,3 +25,9 @@ class OllamaUnavailableError(Exception):
     def __init__(self, message: str = "Ollama unavailable"):
         self.message = message
         super().__init__(message)
+
+
+class WikiError(IngestError):
+    """Wiki generation failed (LLM error, invalid content, or post-processing failure)."""
+
+    pass

@@ -9,9 +9,9 @@ from app.config import settings
 from app.logging import setup_logging
 from app.middleware.auth import BearerAuthMiddleware
 from app.middleware.error_handler import RequestLoggingMiddleware, add_exception_handlers
+from app.api.health import router as health_router
 from app.routes.convert import router as convert_router
 from app.routes.ingest import router as ingest_router
-from app.routes.query import router as query_router
 from app.services.job_queue import JobQueue
 from app.services.ollama_client import OllamaClient
 from app.services.vault_writer import VaultWriter
@@ -52,14 +52,10 @@ add_exception_handlers(app)
 
 setup_logging(settings.log_level)
 
+app.include_router(health_router)
 app.include_router(convert_router)
 app.include_router(ingest_router)
-app.include_router(query_router)
 
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
 
 
 # Mount static files (dashboard) from the static directory
