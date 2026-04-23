@@ -1,8 +1,11 @@
 import asyncio
+import base64
 import contextlib
 import json
 import logging
+import mimetypes
 import os
+import shutil
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
@@ -14,13 +17,27 @@ import httpx
 import pymupdf
 import pymupdf4llm
 
-from app.errors import IngestError
-from app.services.embedding_service import EmbeddingService
+from app.config import settings
+from app.errors import IngestError, OllamaUnavailableError
 from app.services.trafilatura_service import extract_article
 from app.utils.slugify import make_slug
 
 if TYPE_CHECKING:
+    from app.services.ollama_client import OllamaClient
     from app.services.vault_writer import VaultWriter
+
+
+_IMAGE_CONTENT_TYPE_BY_EXT = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
+
+_VLM_PROMPT = (
+    "Describe this image in detail. Extract any visible text under an "
+    "'OCR' heading. Output markdown."
+)
 
 logger = logging.getLogger("senji.pics.job_queue")
 ingest_logger = logging.getLogger("senji.pics.ingest_url")
@@ -88,10 +105,14 @@ class IngestJob:
 
 class JobQueue:
     def __init__(
-        self, db_path: str, vault_writer: "VaultWriter | None" = None
+        self,
+        db_path: str,
+        vault_writer: "VaultWriter | None" = None,
+        ollama_client: "OllamaClient | None" = None,
     ) -> None:
         self._db_path = db_path
         self._vault_writer = vault_writer
+        self._ollama_client = ollama_client
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
@@ -430,12 +451,116 @@ class JobQueue:
                 if tmp_path.exists():
                     os.unlink(tmp_path)
 
+    async def process_image_job(self, job_id: str) -> None:
+        job = self.get_status(job_id)
+        if job.type != "image" or not job.source_path:
+            raise ValueError(f"Job {job_id} is not an image ingest job")
+        if self._vault_writer is None:
+            raise RuntimeError(
+                "JobQueue has no vault_writer; cannot process image jobs"
+            )
+        if self._ollama_client is None:
+            raise RuntimeError(
+                "JobQueue has no ollama_client; cannot process image jobs"
+            )
+
+        self.mark_processing(job_id)
+        tmp_path = Path(job.source_path)
+        try:
+            original = job.original_filename or tmp_path.name
+            ext = Path(original).suffix.lower()
+            content_type = _IMAGE_CONTENT_TYPE_BY_EXT.get(
+                ext, mimetypes.guess_type(original)[0] or "application/octet-stream"
+            )
+
+            image_bytes = tmp_path.read_bytes()
+            image_b64 = base64.b64encode(image_bytes).decode("ascii")
+
+            try:
+                markdown = await self._ollama_client.describe_image(
+                    image_b64,
+                    model=settings.ollama_vision_model,
+                    prompt=_VLM_PROMPT,
+                )
+            except OllamaUnavailableError as exc:
+                raise IngestError(
+                    "Ollama unavailable during image describe",
+                    detail=str(exc),
+                ) from exc
+
+            if not markdown or not markdown.strip():
+                raise IngestError("Ollama VLM returned empty description")
+
+            title = Path(original).stem or "untitled"
+            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            slug = make_slug(title, date_prefix=date_str)
+            fm = {
+                "title": title,
+                "source": original,
+                "date": date_str,
+                "type": "image",
+                "content_type": content_type,
+                "tags": job.tags,
+            }
+            md_path = self._vault_writer.save_raw(slug, markdown, fm)
+
+            asset_dir = self._vault_writer._assets
+            asset_dir.mkdir(parents=True, exist_ok=True)
+            asset_path = asset_dir / f"{slug}{ext}"
+            shutil.copy2(tmp_path, asset_path)
+
+            self.mark_completed(
+                job_id, files_written=[str(md_path), str(asset_path)]
+            )
+            ingest_file_logger.info(
+                "Image ingest complete",
+                extra={
+                    "job_id": job_id,
+                    "original": original,
+                    "content_type": content_type,
+                    "md_path": str(md_path),
+                    "asset_path": str(asset_path),
+                },
+            )
+        except IngestError as exc:
+            detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
+            self.mark_failed(job_id, error=detail)
+            ingest_file_logger.error(
+                "Image ingest failed",
+                extra={
+                    "job_id": job_id,
+                    "original": job.original_filename,
+                    "error": detail,
+                },
+            )
+        except Exception as exc:
+            self.mark_failed(job_id, error=str(exc))
+            ingest_file_logger.error(
+                "Image ingest crashed",
+                extra={
+                    "job_id": job_id,
+                    "original": job.original_filename,
+                    "error": str(exc),
+                },
+                exc_info=True,
+            )
+        finally:
+            with contextlib.suppress(OSError):
+                if tmp_path.exists():
+                    os.unlink(tmp_path)
+
     async def _dispatch_job(self, job_id: str) -> None:
         job = self.get_status(job_id)
         if job.type == "url" and self._vault_writer is not None:
             await self.process_url_job(job_id)
         elif job.type == "pdf" and self._vault_writer is not None:
             await self.process_pdf_job(job_id)
+        elif (
+            job.type == "image"
+            and self._vault_writer is not None
+            and self._ollama_client is not None
+        ):
+            await self.process_image_job(job_id)
         else:
             self.mark_processing(job_id)
             await asyncio.sleep(0)

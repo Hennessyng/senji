@@ -15,6 +15,8 @@ logger = logging.getLogger("senji.pics.ingest")
 router = APIRouter(prefix="/api/ingest")
 
 _ALLOWED_PDF_TYPES = {"application/pdf"}
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+_UNSUPPORTED_IMAGE_TYPES = {"image/heic", "image/heif"}
 _CHUNK_SIZE = 64 * 1024
 
 
@@ -44,7 +46,41 @@ async def ingest_file(
 ) -> IngestFileResponse | JSONResponse:
     content_type = (file.content_type or "").lower()
 
-    if content_type not in _ALLOWED_PDF_TYPES:
+    if content_type in _ALLOWED_PDF_TYPES:
+        job_type = "pdf"
+    elif content_type in _ALLOWED_IMAGE_TYPES:
+        ollama = getattr(request.app.state, "ollama_client", None)
+        if ollama is None or not getattr(ollama, "available", False):
+            logger.warning(
+                "Ollama preflight failed for image ingest",
+                extra={
+                    "content_type": content_type,
+                    "upload_filename": file.filename,
+                },
+            )
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "ollama_unavailable",
+                    "detail": (
+                        "Ollama VLM is required for image ingestion but is not "
+                        "currently available"
+                    ),
+                },
+            )
+        job_type = "image"
+    elif content_type in _UNSUPPORTED_IMAGE_TYPES:
+        return JSONResponse(
+            status_code=415,
+            content={
+                "error": "unsupported_media_type",
+                "detail": (
+                    "HEIC not supported \u2014 convert to JPEG/PNG/WebP "
+                    "client-side"
+                ),
+            },
+        )
+    else:
         return JSONResponse(
             status_code=415,
             content={
@@ -94,17 +130,19 @@ async def ingest_file(
 
     queue = request.app.state.job_queue
     job = IngestJob(
-        type="pdf",
+        type=job_type,
         source_path=str(tmp_path),
         original_filename=file.filename or tmp_path.name,
         tags=list(tags),
     )
     queue.enqueue(job)
     logger.info(
-        "Ingest PDF accepted",
+        "Ingest file accepted",
         extra={
             "job_id": job.job_id,
-            "pdf_file": file.filename,
+            "job_type": job_type,
+            "content_type": content_type,
+            "upload_filename": file.filename,
             "bytes": total,
             "tags": tags,
         },

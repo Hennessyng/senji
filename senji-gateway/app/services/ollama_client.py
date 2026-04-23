@@ -111,13 +111,16 @@ class OllamaClient:
             return result
 
     async def describe_image(
-        self, image_base64: str, model: str = "qwen2.5-vl:7b"
+        self,
+        image_base64: str,
+        model: str = "qwen2.5-vl:7b",
+        prompt: str = "Describe this image in detail.",
     ) -> str:
         if not self.available:
             raise OllamaUnavailableError("Ollama is marked unavailable")
         payload = {
             "model": model,
-            "prompt": "Describe this image in detail.",
+            "prompt": prompt,
             "images": [image_base64],
             "stream": True,
         }

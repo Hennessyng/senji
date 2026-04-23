@@ -12,6 +12,7 @@ _PLAN_SCHEMA_ORDER = (
     "source",
     "date",
     "type",
+    "content_type",
     "tags",
     "language",
     "author",

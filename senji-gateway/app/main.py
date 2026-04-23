@@ -13,14 +13,25 @@ from app.routes.convert import router as convert_router
 from app.routes.ingest import router as ingest_router
 from app.routes.query import router as query_router
 from app.services.job_queue import JobQueue
+from app.services.ollama_client import OllamaClient
 from app.services.vault_writer import VaultWriter
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     vault_writer = VaultWriter(settings.vault_path)
-    job_queue = JobQueue(settings.sqlite_db_path, vault_writer=vault_writer)
+    ollama_client = OllamaClient()
+    try:
+        await ollama_client.health_check()
+    except Exception:
+        ollama_client.available = False
+    job_queue = JobQueue(
+        settings.sqlite_db_path,
+        vault_writer=vault_writer,
+        ollama_client=ollama_client,
+    )
     app.state.vault_writer = vault_writer
+    app.state.ollama_client = ollama_client
     app.state.job_queue = job_queue
     worker_task = asyncio.create_task(job_queue.worker())
     try:

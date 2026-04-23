@@ -73,9 +73,6 @@ def mock_ollama_down():
         app.state.ollama_client = original
 
 
-# -------------------- Handler tests --------------------
-
-
 @pytest.mark.asyncio
 async def test_post_image_returns_202_with_job_id(mock_queue, mock_ollama_up) -> None:
     async with build_client() as client:
@@ -145,7 +142,6 @@ async def test_ollama_down_preflight_returns_503(
     assert response.status_code == 503
     body = response.json()
     assert body["error"] == "ollama_unavailable"
-    # Queue must NOT have been hit on preflight failure.
     assert mock_queue.enqueue.call_count == 0
 
 
@@ -169,9 +165,6 @@ async def test_missing_bearer_token_returns_401() -> None:
             files={"file": ("p.jpg", JPEG_STUB, "image/jpeg")},
         )
     assert response.status_code == 401
-
-
-# -------------------- Worker tests --------------------
 
 
 @pytest.mark.asyncio
@@ -218,13 +211,11 @@ async def test_vlm_response_saved_as_raw_markdown(tmp_path: Path) -> None:
     assert "sunset" in text.lower()
     assert "OCR" in text
 
-    # Asset copy preserved alongside raw vault
     assets_dir = vault_root / "raw" / "assets"
     copies = list(assets_dir.glob("*.jpg"))
     assert len(copies) == 1, f"expected 1 jpg in assets, got {copies}"
     assert copies[0].read_bytes() == JPEG_STUB
 
-    # Ollama was called with the VLM model from config
     call = ollama.describe_image.await_args
     assert call is not None
     kwargs = call.kwargs
@@ -232,7 +223,6 @@ async def test_vlm_response_saved_as_raw_markdown(tmp_path: Path) -> None:
     model_used = kwargs.get("model") or (args[1] if len(args) > 1 else None)
     assert model_used == "qwen2.5vl:7b"
 
-    # Temp file cleaned up
     assert not img_path.exists()
 
 
@@ -269,5 +259,4 @@ async def test_ollama_down_mid_worker_fails_job(tmp_path: Path) -> None:
     err = (fetched.error_detail or "").lower()
     assert "ollama" in err or "unavailable" in err or "connection" in err
 
-    # Temp file cleaned up even on failure
     assert not img_path.exists()
