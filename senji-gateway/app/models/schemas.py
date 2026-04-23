@@ -33,10 +33,11 @@ class HealthResponse(BaseModel):
     services: dict[str, str]
 
 
-class IngestResponse(BaseModel):
-    markdown: str
-    title: str
-    source: str
-    author: str | None = None
-    language: str | None = None
-    publish_date: str | None = None
+class IngestUrlRequest(BaseModel):
+    url: HttpUrl
+    tags: list[str] = []
+
+
+class IngestUrlResponse(BaseModel):
+    job_id: str
+    status: str

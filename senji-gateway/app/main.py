@@ -1,4 +1,7 @@
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -8,8 +11,28 @@ from app.middleware.auth import BearerAuthMiddleware
 from app.middleware.error_handler import RequestLoggingMiddleware, add_exception_handlers
 from app.routes.convert import router as convert_router
 from app.routes.ingest import router as ingest_router
+from app.services.job_queue import JobQueue
+from app.services.vault_writer import VaultWriter
 
-app = FastAPI(title="Senji Gateway")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    vault_writer = VaultWriter(settings.vault_path)
+    job_queue = JobQueue(settings.sqlite_db_path, vault_writer=vault_writer)
+    app.state.vault_writer = vault_writer
+    app.state.job_queue = job_queue
+    worker_task = asyncio.create_task(job_queue.worker())
+    try:
+        yield
+    finally:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+
+
+app = FastAPI(title="Senji Gateway", lifespan=lifespan)
 app.state.settings = settings
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(BearerAuthMiddleware, token=settings.senji_token)

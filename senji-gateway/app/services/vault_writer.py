@@ -108,15 +108,17 @@ class VaultWriter:
             raise VaultError(f"Failed to write {path}", path=str(path)) from exc
 
     def _build_frontmatter(self, fm: dict) -> str:
-        """TODO(user): Build YAML frontmatter block from dict. Contract in tests/test_vault_writer.py.
-        
-        Keys: use _PLAN_SCHEMA_ORDER. Omit None, "", [].
-        Tags: YAML flow format [a, b].
-        Strings: quote + _yaml_escape.
-        Return: "---\\nkey: value\\n...\\n---"
-        
-        ~5-10 lines. Helpers: _yaml_escape, _PLAN_SCHEMA_ORDER.
-        """
-        raise NotImplementedError(
-            "_build_frontmatter is a learning-mode contribution. See tests for contract."
-        )
+        lines = ["---"]
+        for key in _PLAN_SCHEMA_ORDER:
+            if key not in fm:
+                continue
+            val = fm[key]
+            if val is None or val == "" or val == []:
+                continue
+            if key == "tags":
+                joined = ", ".join(f'"{_yaml_escape(str(t))}"' for t in val)
+                lines.append(f"tags: [{joined}]")
+            else:
+                lines.append(f'{key}: "{_yaml_escape(str(val))}"')
+        lines.append("---")
+        return "\n".join(lines)

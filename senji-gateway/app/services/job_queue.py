@@ -5,9 +5,23 @@ import sqlite3
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+import httpx
+
+from app.errors import IngestError
+from app.services.trafilatura_service import extract_article
+from app.utils.slugify import make_slug
+
+if TYPE_CHECKING:
+    from app.services.vault_writer import VaultWriter
 
 logger = logging.getLogger("senji.pics.job_queue")
+ingest_logger = logging.getLogger("senji.pics.ingest_url")
+
+_FETCH_TIMEOUT_SECONDS = 10.0
+_FETCH_RETRIES = 3
+_USER_AGENT = "Mozilla/5.0 (compatible; Senji/1.0)"
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS jobs (
@@ -66,8 +80,11 @@ class IngestJob:
 
 
 class JobQueue:
-    def __init__(self, db_path: str) -> None:
+    def __init__(
+        self, db_path: str, vault_writer: "VaultWriter | None" = None
+    ) -> None:
         self._db_path = db_path
+        self._vault_writer = vault_writer
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
@@ -182,14 +199,100 @@ class JobQueue:
             ).fetchall()
         return [r[0] for r in rows]
 
+    async def _fetch_html(self, url: str) -> str:
+        last_exc: Exception | None = None
+        for attempt in range(_FETCH_RETRIES):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=_FETCH_TIMEOUT_SECONDS,
+                    follow_redirects=True,
+                    headers={"User-Agent": _USER_AGENT},
+                ) as client:
+                    response = await client.get(url)
+                    response.raise_for_status()
+                    return response.text
+            except (httpx.HTTPError, httpx.TimeoutException) as exc:
+                last_exc = exc
+                ingest_logger.warning(
+                    "Fetch attempt failed",
+                    extra={"url": url, "attempt": attempt + 1, "error": str(exc)},
+                )
+                await asyncio.sleep(0.2 * (attempt + 1))
+        raise IngestError(
+            f"Failed to fetch URL after {_FETCH_RETRIES} attempts",
+            detail=str(last_exc) if last_exc else None,
+        )
+
+    async def process_url_job(self, job_id: str) -> None:
+        job = self.get_status(job_id)
+        if job.type != "url" or not job.source_url:
+            raise ValueError(f"Job {job_id} is not a URL ingest job")
+        if self._vault_writer is None:
+            raise RuntimeError("JobQueue has no vault_writer; cannot process URL jobs")
+
+        self.mark_processing(job_id)
+        try:
+            html = await self._fetch_html(job.source_url)
+            try:
+                extracted = extract_article(html, job.source_url)
+            except ValueError as exc:
+                raise IngestError(
+                    "trafilatura returned empty content", detail=str(exc)
+                ) from exc
+
+            markdown = extracted.get("markdown") or ""
+            if not markdown.strip():
+                raise IngestError("trafilatura returned empty content")
+
+            title = extracted.get("title") or "untitled"
+            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            slug = make_slug(title, date_prefix=date_str)
+            fm = {
+                "title": title,
+                "source": job.source_url,
+                "date": date_str,
+                "type": "url",
+                "tags": job.tags,
+                "language": extracted.get("language"),
+                "author": extracted.get("author"),
+                "description": extracted.get("description"),
+            }
+            path = self._vault_writer.save_raw(slug, markdown, fm)
+            self.mark_completed(job_id, files_written=[str(path)])
+            ingest_logger.info(
+                "URL ingest complete",
+                extra={"job_id": job_id, "url": job.source_url, "path": str(path)},
+            )
+        except IngestError as exc:
+            detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
+            self.mark_failed(job_id, error=detail)
+            ingest_logger.error(
+                "URL ingest failed",
+                extra={"job_id": job_id, "url": job.source_url, "error": detail},
+            )
+        except Exception as exc:
+            self.mark_failed(job_id, error=str(exc))
+            ingest_logger.error(
+                "URL ingest crashed",
+                extra={"job_id": job_id, "url": job.source_url, "error": str(exc)},
+                exc_info=True,
+            )
+
+    async def _dispatch_job(self, job_id: str) -> None:
+        job = self.get_status(job_id)
+        if job.type == "url" and self._vault_writer is not None:
+            await self.process_url_job(job_id)
+        else:
+            self.mark_processing(job_id)
+            await asyncio.sleep(0)
+            self.mark_completed(job_id, files_written=[])
+
     async def worker(self) -> None:
         logger.info("Worker started")
         while True:
             try:
                 for job_id in self._get_queued_jobs():
-                    self.mark_processing(job_id)
-                    await asyncio.sleep(0)
-                    self.mark_completed(job_id, files_written=[])
+                    await self._dispatch_job(job_id)
             except Exception as exc:
                 logger.error("Worker loop error", extra={"error": str(exc)}, exc_info=True)
             await asyncio.sleep(0.05)
