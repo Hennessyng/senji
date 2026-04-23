@@ -1,5 +1,6 @@
 import asyncio
 import json
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -10,10 +11,52 @@ from app.services.ollama_client import OllamaClient
 BASE_URL = "http://fake-ollama:11434"
 
 
-def make_stream(*chunks: str) -> bytes:
+def make_stream_lines(*chunks: str) -> list[str]:
     lines = [json.dumps({"response": chunk}) for chunk in chunks]
     lines.append(json.dumps({"done": True}))
-    return "\n".join(lines).encode()
+    return lines
+
+
+class _AsyncStreamResponse:
+    def __init__(self, lines: list[str], capture: list | None = None):
+        self._lines = lines
+        self._capture = capture
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+    def raise_for_status(self):
+        pass
+
+    async def aiter_lines(self):
+        for line in self._lines:
+            yield line
+
+
+def _make_stream_client(lines: list[str], capture: list | None = None):
+    def do_stream(method, url, **kwargs):
+        if capture is not None:
+            capture.append(kwargs.get("json", {}))
+        return _AsyncStreamResponse(lines, capture)
+
+    mock = MagicMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=None)
+    mock.stream = MagicMock(side_effect=do_stream)
+    return mock
+
+
+def _make_health_client(exc=None):
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    mock = MagicMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=None)
+    mock.get = AsyncMock(side_effect=exc) if exc is not None else AsyncMock(return_value=resp)
+    return mock
 
 
 @pytest.fixture
@@ -29,12 +72,8 @@ def available_client() -> OllamaClient:
 
 
 @pytest.mark.asyncio
-async def test_health_check_success(httpx_mock):
-    httpx_mock.add_response(
-        method="GET",
-        url=f"{BASE_URL}/api/tags",
-        json={"models": [{"name": "qwen3:8b-q5_K_M"}]},
-    )
+async def test_health_check_success(monkeypatch):
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **kw: _make_health_client())
     c = OllamaClient(base_url=BASE_URL)
     result = await c.health_check()
     assert result is True
@@ -42,46 +81,42 @@ async def test_health_check_success(httpx_mock):
 
 
 @pytest.mark.asyncio
-async def test_health_check_failure_3_retries(httpx_mock, monkeypatch):
+async def test_health_check_failure_3_retries(monkeypatch):
     async def no_sleep(_: float) -> None:
         pass
-
     monkeypatch.setattr(asyncio, "sleep", no_sleep)
-
-    for _ in range(3):
-        httpx_mock.add_exception(httpx.ConnectError("connection refused"))
-
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda *a, **kw: _make_health_client(exc=httpx.ConnectError("refused"))
+    )
     c = OllamaClient(base_url=BASE_URL)
     result = await c.health_check()
-
     assert result is False
     assert c.available is False
 
 
 @pytest.mark.asyncio
-async def test_health_check_exponential_backoff(httpx_mock, monkeypatch):
+async def test_health_check_exponential_backoff(monkeypatch):
     sleep_calls: list[float] = []
 
     async def capture_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
     monkeypatch.setattr(asyncio, "sleep", capture_sleep)
-
-    for _ in range(3):
-        httpx_mock.add_exception(httpx.ConnectError("refused"))
-
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda *a, **kw: _make_health_client(exc=httpx.ConnectError("refused"))
+    )
     c = OllamaClient(base_url=BASE_URL)
     await c.health_check()
-
     assert sleep_calls == [0.5, 1.0]
 
 
 @pytest.mark.asyncio
-async def test_generate_success(httpx_mock):
-    httpx_mock.add_response(
-        method="POST",
-        url=f"{BASE_URL}/api/generate",
-        content=make_stream("Hello", ", ", "world!"),
+async def test_generate_success(monkeypatch):
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda *a, **kw: _make_stream_client(make_stream_lines("Hello", ", ", "world!"))
     )
     c = OllamaClient(base_url=BASE_URL)
     c.available = True
@@ -115,16 +150,14 @@ async def test_generate_concurrent_enforcement():
         c.generate("sys", "msg1", model="m"),
         c.generate("sys", "msg2", model="m"),
     )
-
     assert events == ["start", "end", "start", "end"]
 
 
 @pytest.mark.asyncio
-async def test_describe_image_success(httpx_mock):
-    httpx_mock.add_response(
-        method="POST",
-        url=f"{BASE_URL}/api/generate",
-        content=make_stream("A cat ", "sitting on a mat."),
+async def test_describe_image_success(monkeypatch):
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda *a, **kw: _make_stream_client(make_stream_lines("A cat ", "sitting on a mat."))
     )
     c = OllamaClient(base_url=BASE_URL)
     c.available = True
@@ -133,36 +166,29 @@ async def test_describe_image_success(httpx_mock):
 
 
 @pytest.mark.asyncio
-async def test_describe_image_vision_api_shape(httpx_mock):
-    httpx_mock.add_response(
-        method="POST",
-        url=f"{BASE_URL}/api/generate",
-        content=make_stream("desc"),
+async def test_describe_image_vision_api_shape(monkeypatch):
+    captured: list[dict] = []
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda *a, **kw: _make_stream_client(make_stream_lines("desc"), capture=captured)
     )
     c = OllamaClient(base_url=BASE_URL)
     c.available = True
     await c.describe_image("abc123==", model="qwen2.5-vl:7b")
-
-    sent = httpx_mock.get_requests()
-    assert len(sent) == 1
-    payload = json.loads(sent[0].content)
-
+    assert len(captured) == 1
+    payload = captured[0]
     assert {"model", "prompt", "images", "stream"} <= set(payload.keys())
     assert payload["images"] == ["abc123=="]
     assert payload["stream"] is True
-    assert isinstance(payload["images"], list)
 
 
 @pytest.mark.asyncio
-async def test_streaming_json_parse(httpx_mock):
+async def test_streaming_json_parse(monkeypatch):
     chunks = ["The ", "quick ", "brown ", "fox."]
-    httpx_mock.add_response(
-        method="POST",
-        url=f"{BASE_URL}/api/generate",
-        content=make_stream(*chunks),
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda *a, **kw: _make_stream_client(make_stream_lines(*chunks))
     )
     c = OllamaClient(base_url=BASE_URL)
-    result = await c._stream_generate(
-        {"model": "any", "prompt": "go", "stream": True}
-    )
+    result = await c._stream_generate({"model": "any", "prompt": "go", "stream": True})
     assert result == "The quick brown fox."
