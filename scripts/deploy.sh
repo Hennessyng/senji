@@ -24,6 +24,9 @@ log "Restarted webhook service"
 log "Rebuilding gateway and readability"
 docker compose up -d --build gateway readability
 
+log "Ensuring obsidian-remote is running"
+docker compose up -d obsidian-remote
+
 log "Waiting for services to be healthy (up to 60s)"
 for i in $(seq 1 12); do
     if docker compose ps | grep -E '(gateway|readability)' | grep -q '(healthy)'; then

@@ -8,8 +8,6 @@ services:
     depends_on:
       readability:
         condition: service_healthy
-      docling:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 10s
@@ -21,6 +19,7 @@ services:
         limits:
           memory: 512M
     networks: [senji-net]
+
   readability:
     build: ./senji-readability
     expose: ["3000"]
@@ -36,21 +35,39 @@ services:
         limits:
           memory: 256M
     networks: [senji-net]
-  docling:
-    image: ghcr.io/docling-project/docling-serve:latest
-    expose: ["5001"]
+
+  obsidian-remote:
+    image: ghcr.io/sytone/obsidian-remote:latest
+    ports:
+      - "7899:8080"
+    volumes:
+      - /opt/vault:/vaults
+    environment:
+      - PUID=1000
+      - PGID=1000
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:5001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+    networks: [senji-net]
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "8080:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+      - /opt/vault:/vault:ro
+    environment:
+      - OLLAMA_BASE_URL=http://10.1.1.222:11434
+      - WEBUI_AUTH=true
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 1G
     networks: [senji-net]
+
 networks:
   senji-net:
     driver: bridge
+
+volumes:
+  open-webui-data:
