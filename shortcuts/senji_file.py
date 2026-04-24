@@ -14,15 +14,6 @@ def _var(name):
         "attachmentsByRange": {str(i): {"Type": "ActionOutput", "OutputName": name, "OutputUUID": _uid()} for i in range(len(name))}
     }
 
-def _ask_for_text(prompt):
-    return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
-        "WFWorkflowActionParameters": {
-            "WFInputActionString": _text(prompt),
-            "WFAskActionRequestType": 0
-        }
-    }
-
 def _post_file(url, file_var):
     return {
         "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
@@ -57,18 +48,26 @@ def _alert(title, body):
 
 # Build shortcut
 actions = [
-    {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.ask.for.document",
-        "WFWorkflowActionParameters": {
-            "WFInputActionString": _text("Choose file to upload"),
-            "WFAskActionRequestType": 18
-        }
-    },
     _post_file(
         "https://markdown.myloft.cloud/api/ingest/file",
-        _var("Provided Media")
+        _var("Shortcut Input")
     ),
+    {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+        "WFWorkflowActionParameters": {
+            "WFInput": _var("Status Code"),
+            "WFControlFlowCondition": 0,
+            "WFConditionalActionString": "202"
+        }
+    },
     _notification("Uploaded: ￼Result￼"),
+    {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+        "WFWorkflowActionParameters": {
+            "WFInput": _var("Status Code"),
+            "WFControlFlowCondition": 2
+        }
+    },
     _alert("Error", "￼Result￼")
 ]
 
@@ -80,6 +79,6 @@ shortcut = {
 }
 
 if __name__ == "__main__":
-    with open("Senji — Upload File.shortcut", "wb") as f:
+    with open("Senji — Clip File.shortcut", "wb") as f:
         plistlib.dump(shortcut, f)
-    print("✓ Senji — Upload File.shortcut created")
+    print("✓ Senji — Clip File.shortcut created")

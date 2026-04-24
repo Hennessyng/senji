@@ -55,16 +55,27 @@ def _alert(title, body):
 
 # Build shortcut
 actions = [
-    {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.getcliipboardcontents",
-        "WFWorkflowActionParameters": {}
-    },
     _post_url(
         "https://markdown.myloft.cloud/api/ingest/url",
         {"Authorization": "Bearer {API_TOKEN}"},
-        {"url": {"string": "￼Clipboard￼"}, "tags": []}
+        {"url": _var("Shortcut Input"), "tags": []}
     ),
+    {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+        "WFWorkflowActionParameters": {
+            "WFInput": _var("Status Code"),
+            "WFControlFlowCondition": 0,
+            "WFConditionalActionString": "202"
+        }
+    },
     _notification("Queued: ￼Result￼"),
+    {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+        "WFWorkflowActionParameters": {
+            "WFInput": _var("Status Code"),
+            "WFControlFlowCondition": 2
+        }
+    },
     _alert("Error", "￼Result￼")
 ]
 
