@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     readability_url: str = "http://readability:3000"
     log_level: str = "INFO"
     sqlite_db_path: str = "/opt/vault/jobs.db"
-    ollama_base_url: str
+    ollama_base_url: str = "http://localhost:11434"
     vault_path: str = "/opt/vault"
     ollama_model: str = "qwen3:8b"
     ollama_vision_model: str = "qwen2.5vl:7b"
