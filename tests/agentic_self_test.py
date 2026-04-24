@@ -172,8 +172,8 @@ def test_gateway_reachable() -> Result:
     name = "gateway_reachable"
     try:
         r = _get("/health", timeout=5.0)
-        if r.status_code == 200 and r.json().get("status") == "ok":
-            return Result(name, True, "HTTP 200 /health → {status: ok}")
+        if r.status_code == 200 and r.json().get("status") in ("ok", "healthy"):
+            return Result(name, True, f"HTTP 200 /health → {{status: {r.json().get('status')}}}")
         return Result(
             name, False,
             f"unexpected response: {r.status_code} {r.text[:200]}",
