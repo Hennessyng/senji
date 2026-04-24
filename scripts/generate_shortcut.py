@@ -195,8 +195,8 @@ def _build_actions(endpoint: str, token: str, vault: str, debug: bool = False) -
     ])
 
     if debug:
-        actions.extend(_debug_show("DEBUG 3: Extracted title", u_title_val, "Dictionary Value"))
-        actions.extend(_debug_show("DEBUG 4: Extracted markdown", u_md_val, "Dictionary Value"))
+        actions.extend(_debug_show("DEBUG 3: Extracted title", u_title_val, "Value"))
+        actions.extend(_debug_show("DEBUG 4: Extracted markdown", u_md_val, "Value"))
 
     # Materialize title as text → URL-encode
     actions.extend([
@@ -204,7 +204,7 @@ def _build_actions(endpoint: str, token: str, vault: str, debug: bool = False) -
             "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
             "WFWorkflowActionParameters": {
                 "UUID": u_title_text,
-                "WFTextActionText": _magic_text("", "Dictionary Value", u_title_val),
+                "WFTextActionText": _magic_text("", "Value", u_title_val),
             },
         },
         {
@@ -223,7 +223,7 @@ def _build_actions(endpoint: str, token: str, vault: str, debug: bool = False) -
             "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
             "WFWorkflowActionParameters": {
                 "UUID": u_md_text,
-                "WFTextActionText": _magic_text("", "Dictionary Value", u_md_val),
+                "WFTextActionText": _magic_text("", "Value", u_md_val),
             },
         },
         {
@@ -284,7 +284,7 @@ def _build_actions(endpoint: str, token: str, vault: str, debug: bool = False) -
         "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
         "WFWorkflowActionParameters": {
             "WFNotificationActionTitle": _text("Saved to Obsidian \u2713"),
-            "WFNotificationActionBody": _magic("Dictionary Value", u_title_val),
+            "WFNotificationActionBody": _magic("Value", u_title_val),
             "WFNotificationActionSound": False,
         },
     })

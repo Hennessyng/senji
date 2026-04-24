@@ -1,17 +1,222 @@
 # Senji
-Version: 20260421-02
 
-Self-hosted web clipper. Converts URLs, HTML, PDFs, and DOCX files to clean Obsidian-formatted markdown. Trigger from iOS/macOS Share Sheet via Apple Shortcuts.
+Self-hosted knowledge ingestion and web clipping platform. Converts URLs, HTML, PDFs, and images to structured Obsidian markdown, with AI-powered wiki generation and semantic embeddings.
+
+---
+
+## Features
+
+- **Web clipping** — Share any URL from iOS/macOS Share Sheet → note in Obsidian via Apple Shortcut
+- **Async ingestion** — Queue URLs, PDFs, and images; processed in background with job status polling
+- **PDF → markdown** — pymupdf + pymupdf4llm; full text extraction with page-aware chunking
+- **Image ingestion** — Ollama Vision (qwen2.5vl) describes images and extracts text via OCR
+- **Wiki generation** — Ollama LLM (qwen3:8b) generates structured wiki entries from ingested content
+- **Semantic embeddings** — bge-m3 embeddings indexed for Open WebUI RAG
+- **Browser Obsidian** — obsidian-remote runs full Obsidian at `:7899` against the server vault
+- **AI chat over vault** — Open WebUI + Ollama at `:8080`, vault mounted read-only for context
+- **Dashboard** — Static web UI served at `/` by the gateway
+- **Self-hosted** — No third-party cloud; your data stays on your infrastructure
+- **Secure** — Bearer token auth, Cloudflare Tunnel (no open ports), HTTPS everywhere
+- **CI/CD with auto-rollback** — GitHub Actions → webhook → VM rebuild → self-test; rolls back on failure
+
+---
+
+## Infrastructure
 
 ```
-Share URL (iOS / macOS)
-      ↓  Apple Shortcut
-https://markdown.myloft.cloud   ← Cloudflare Tunnel
-      ↓  senji-gateway (FastAPI)
-      ├─ senji-readability (Node, Readability.js + Turndown)
-      └─ senji-docling     (Python, PDF/DOCX)
+Apple Shortcut (iOS/macOS)
+      ↓  POST /api/convert/url  (sync)
+senji-gateway :8000  (FastAPI, auth, dashboard, job queue)
+      ├─ senji-readability :3000   (Readability.js + Turndown)
+      └─ Ollama (external, OLLAMA_BASE_URL)
+            ├─ qwen3:8b          — wiki generation
+            ├─ qwen2.5vl:7b      — image OCR + description
+            └─ bge-m3            — semantic embeddings
+      ↓ writes to
+/opt/vault/
+  ├── raw/        ← clipped articles (slug.md + frontmatter)
+  ├── wiki/       ← AI-generated wiki entries
+  ├── assets/     ← downloaded media
+  └── jobs.db     ← SQLite job queue
+
+obsidian-remote :7899   (full Obsidian in browser, /opt/vault)
+open-webui      :8080   (AI chat, Ollama RAG, /opt/vault read-only)
+```
+
+**CI/CD pipeline:**
+```
+git push main → GitHub Actions (unit tests)
+      ↓ (pass)
+POST https://deploy.myloft.cloud/hooks/deploy-senji  ← Cloudflare Tunnel
       ↓
-iCloud Drive / Obsidian / [vault] / Clippings / [title].md
+adnanh/webhook :9000 (systemd)
+      ↓
+scripts/deploy.sh: git pull → docker compose up --build → health check → self-test
+      ↓ (fail) auto-rollback: git stash + rebuild previous
+```
+
+**CI/CD pipeline:**
+```
+git push main
+      ↓
+GitHub Actions  — unit tests
+      ↓ (on pass)
+POST https://deploy.myloft.cloud/hooks/deploy-senji   ← Cloudflare Tunnel
+      ↓
+adnanh/webhook :9000  (systemd, VM)
+      ↓
+scripts/deploy.sh
+      git pull → docker compose up --build → health check → agentic_self_test.py
+      ↓ (on self-test fail)
+      auto-rollback: git stash + rebuild previous version
+```
+
+### Services & Ports
+
+| Service | Port | Purpose |
+|---|---|---|
+| gateway | 7878 (ext), 8000 (int) | FastAPI, auth, API, dashboard, job queue |
+| readability | 3000 (int only) | HTML → markdown (Readability.js + Turndown) |
+| obsidian-remote | 7899 | Full Obsidian in browser (KasmVNC, `/opt/vault`) |
+| open-webui | 8080 | AI chat with vault RAG (Ollama backend) |
+
+---
+
+## API
+
+### Convert — synchronous, returns markdown immediately
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| `POST` | `/api/convert/url` | `{"url": "..."}` | Fetch URL → markdown (Apple Shortcut) |
+| `POST` | `/api/convert/html` | `{"html": "...", "source_url": "..."}` | Raw HTML → markdown |
+| `GET` | `/health` | — | Health check |
+
+**Response schema:**
+```json
+{ "markdown": "...", "title": "...", "source": "...", "media": [] }
+```
+
+### Ingest — async, 202 accepted, poll for status
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/ingest/url` | Queue URL for full pipeline (convert + wiki + embed) |
+| `POST` | `/api/ingest/file` | Queue PDF or image (multipart/form-data) |
+| `GET` | `/api/ingest/jobs/{job_id}` | Poll job status |
+
+**Supported file types:**
+- `application/pdf` — pymupdf text extraction
+- `image/jpeg`, `image/png`, `image/webp` — Ollama Vision OCR + description
+- `image/heic` / `image/heif` — **rejected** (415), convert client-side first
+
+**Ingest pipeline per job:** fetch → convert → `raw/{slug}.md` → wiki → `wiki/{slug}.md` → embed
+
+**Job status:**
+```json
+{ "job_id": "...", "type": "url|pdf|image", "status": "queued|processing|complete|failed",
+  "files_written": ["raw/slug.md", "wiki/slug.md"], "error_detail": null }
+```
+
+---
+
+## Environment Variables
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `SENJI_TOKEN` | `dev-token` | Yes | Bearer auth token |
+| `OLLAMA_BASE_URL` | — | **Yes** | Ollama API URL (e.g. `http://10.1.1.222:11434`) |
+| `READABILITY_URL` | `http://readability:3000` | No | Readability service URL |
+| `VAULT_PATH` | `/opt/vault` | No | Vault root on server |
+| `OLLAMA_MODEL` | `qwen3:8b` | No | LLM for wiki generation |
+| `OLLAMA_VISION_MODEL` | `qwen2.5vl:7b` | No | Vision model for image ingest |
+| `OLLAMA_EMBED_MODEL` | `bge-m3` | No | Embedding model |
+| `MAX_FILE_SIZE_MB` | `50` | No | Upload size limit |
+| `SQLITE_DB_PATH` | `/opt/vault/jobs.db` | No | Job queue database |
+| `LOG_LEVEL` | `INFO` | No | Logging verbosity |
+
+---
+
+## Quick Start
+
+> Full prerequisites: Proxmox VM with Docker + Docker Compose, Cloudflare Tunnel configured, macOS with `shortcuts` CLI for shortcut generation.
+
+**1. Clone and configure**
+
+```bash
+ssh user@proxmox-vm
+git clone https://github.com/Hennessyng/senji.git /opt/stacks/homelab/senji
+cd /opt/stacks/homelab/senji
+cp .env.example .env
+```
+
+Edit `.env`:
+```env
+SENJI_TOKEN=$(openssl rand -hex 32)         # copy — needed for the shortcut
+OLLAMA_BASE_URL=http://10.1.1.222:11434     # required — your Ollama host
+READABILITY_URL=http://readability:3000
+```
+
+**2. Create vault and start**
+
+```bash
+mkdir -p /opt/vault
+docker compose up -d --build
+docker compose ps   # all services: healthy
+```
+
+**3. Verify**
+
+```bash
+curl -s http://localhost:8000/health
+# → {"status":"ok"}
+```
+
+**4. Generate the Apple Shortcut (on your Mac)**
+
+```bash
+python scripts/generate_shortcut.py --vault "MyVault" --token "<SENJI_TOKEN>"
+# Output: senji-clipper.shortcut
+```
+
+Double-click to import on macOS, or AirDrop to iPhone.
+
+**5. Clip something**
+
+Open any URL in Safari → Share → Shortcuts → **Senji Clipper** → note appears in `Clippings/`.
+
+---
+
+## Installation
+
+### Requirements
+
+| Component | Requirement |
+|---|---|
+| Proxmox VM | Docker + Docker Compose |
+| Cloudflare | Tunnel configured to VM |
+| Mac (shortcut gen) | Python 3.10+, `shortcuts` CLI (Xcode) |
+| iPhone / Mac | Obsidian app, iCloud Drive enabled |
+
+### Dependencies
+
+**Server (auto-installed via Docker):**
+- `senji-gateway` — FastAPI, httpx, pydantic, pymupdf, pymupdf4llm
+- `senji-readability` — Node.js, @mozilla/readability, turndown
+- `obsidian-remote` — `ghcr.io/sytone/obsidian-remote` (full Obsidian via KasmVNC)
+- `open-webui` — `ghcr.io/open-webui/open-webui` (AI chat, connects to Ollama)
+- **Ollama** — external; must be running separately at `OLLAMA_BASE_URL`
+
+**Shortcut generator (local Mac only):**
+```bash
+# No pip install required — stdlib only (plistlib, uuid, subprocess)
+python scripts/generate_shortcut.py --help
+```
+
+**Self-test (optional):**
+```bash
+pip install httpx
+python tests/agentic_self_test.py
 ```
 
 ---
@@ -23,6 +228,7 @@ iCloud Drive / Obsidian / [vault] / Clippings / [title].md
 - Docker VM on Proxmox with Docker + Docker Compose installed
 - Cloudflare Tunnel configured: `markdown.myloft.cloud` → `localhost:8000`
 - Git available on the VM
+- Vault directory at `/opt/vault` on the VM (used by obsidian-remote and open-webui)
 
 ### 1. Copy files to the VM
 
@@ -37,7 +243,7 @@ Or clone directly on the VM:
 
 ```bash
 ssh user@proxmox-vm
-git clone https://github.com/youruser/senji.git /opt/stacks/homelab/senji
+git clone https://github.com/Hennessyng/senji.git /opt/stacks/homelab/senji
 ```
 
 ### 2. Configure environment
@@ -50,27 +256,28 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-SENJI_TOKEN=<your-secure-token>       # openssl rand -hex 32
-DOCLING_URL=http://docling:5001
+SENJI_TOKEN=<your-secure-token>             # openssl rand -hex 32
+OLLAMA_BASE_URL=http://10.1.1.222:11434     # required — your Ollama host
 READABILITY_URL=http://readability:3000
 ```
 
-> **Keep this token** — you'll need it in the Apple Shortcut.
+> **Keep `SENJI_TOKEN`** — you'll need it in the Apple Shortcut.
 
-### 3. Start services
+### 3. Create the vault directory
+
+```bash
+mkdir -p /opt/vault
+```
+
+### 4. Start services
 
 ```bash
 docker compose up -d --build
-docker compose ps          # all three should show (healthy)
-```
-
-First start takes ~2 min (docling image is large). Check with:
-
-```bash
+docker compose ps          # all services should show (healthy)
 docker compose logs -f
 ```
 
-### 4. Verify
+### 5. Verify
 
 ```bash
 curl -s http://localhost:8000/health
@@ -82,7 +289,7 @@ curl -s -X POST http://localhost:8000/api/convert/url \
   -d '{"url":"https://example.com"}' | head -c 200
 ```
 
-### 5. Cloudflare Tunnel
+### 6. Cloudflare Tunnel
 
 In Cloudflare Zero Trust → Tunnels → your tunnel → Public Hostname:
 
@@ -100,12 +307,6 @@ git pull                              # or rsync from Mac again
 docker compose up -d --build gateway readability
 ```
 
-Docling updates slowly (large image); only rebuild it when needed:
-
-```bash
-docker compose pull docling && docker compose up -d docling
-```
-
 ---
 
 ## Apple Shortcuts Setup
@@ -115,13 +316,13 @@ One shortcut works on both iOS and macOS. It clips any URL from the Share Sheet 
 ### Generate the shortcut file
 
 ```bash
-# Install deps (if not already)
-pip install httpx   # only needed for self-test, not the generator
-
 # Generate (replace MyVault with your actual Obsidian vault name)
 python scripts/generate_shortcut.py --vault "MyVault" --token "<your-token>"
 
 # Output: senji-clipper.shortcut
+
+# Debug build — adds alert dialogs after each step for on-device troubleshooting
+python scripts/generate_shortcut.py --vault "MyVault" --token "<your-token>" --debug
 ```
 
 ### Import
@@ -182,35 +383,10 @@ cd senji-gateway && python -m pytest tests/ -v
 
 ---
 
-## Services & Ports
-
-| Service | Internal port | External (dev) | Purpose |
-|---|---|---|---|
-| gateway | 8000 | 7878 (dev + prod) | FastAPI, dashboard, auth |
-| readability | 3000 | internal only | HTML → markdown (Readability.js) |
-| docling | 5001 | internal only | PDF / DOCX → markdown |
-
----
-
 ## CI/CD — GitHub Actions + Webhook
 
 Every push to `main` triggers: unit tests → webhook → VM pulls + rebuilds + self-test.
 No SSH exposed to the internet. Cloudflare Tunnel secures the webhook endpoint.
-
-```
-git push main
-    ↓
-GitHub Actions — runs unit tests
-    ↓ (on pass)
-POST https://deploy.myloft.cloud/hooks/deploy-senji
-    ↓ Cloudflare Tunnel
-VM port 9000 — adnanh/webhook (systemd service)
-    ↓
-scripts/deploy.sh
-    git pull → docker compose up --build → health check → agentic_self_test.py
-    ↓ (on self-test fail)
-    auto-rollback: git stash + rebuild previous version
-```
 
 ### Prerequisites
 
@@ -243,16 +419,7 @@ webhook -version
 openssl rand -hex 32
 ```
 
-The file `webhook/hooks.json` is already in the repo (cloned in Step 1 of [Deploy on Proxmox](#deploy-on-proxmox)). Edit it to set your secret:
-
-```bash
-nano /opt/stacks/homelab/senji/webhook/hooks.json
-# Find: "REPLACE_WITH_YOUR_WEBHOOK_SECRET"
-# Replace with your generated secret
-# Save: Ctrl+O → Enter → Ctrl+X
-```
-
-Or with a one-liner (replace `YOUR_SECRET_HERE`):
+The file `webhook/hooks.json` is already in the repo. Edit it to set your secret:
 
 ```bash
 SECRET="YOUR_SECRET_HERE"
@@ -295,13 +462,6 @@ In [Cloudflare Zero Trust](https://one.dash.cloudflare.com) → Networks → Tun
 | Type | `HTTP` |
 | URL | `localhost:9000` |
 
-Save. Test from your Mac:
-
-```bash
-curl -s https://deploy.myloft.cloud/hooks/deploy-senji
-# Expected: {"error":"Hook rules were not satisfied."} — tunnel is working
-```
-
 ### Step 6 — GitHub: add the webhook secret
 
 In your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
@@ -312,9 +472,6 @@ In your GitHub repo → **Settings** → **Secrets and variables** → **Actions
 
 ### Step 7 — trigger a deploy
 
-The GitHub Actions workflow (`.github/workflows/deploy.yml`) is already in the repo.
-Push any commit to `main` to trigger it:
-
 ```bash
 git commit --allow-empty -m "chore: trigger first CI deploy"
 git push origin main
@@ -324,17 +481,15 @@ Watch it run at `https://github.com/Hennessyng/senji/actions`.
 
 ### Verify the deploy
 
-On the VM:
-
 ```bash
 # Live webhook logs
 journalctl -u senji-webhook -f
 
-# Live deploy log (git pull, docker build, self-test output)
+# Live deploy log
 tail -f /var/log/senji-deploy.log
 ```
 
-Manual trigger from Mac (useful for testing without a code push):
+Manual trigger:
 
 ```bash
 curl -f -X POST https://deploy.myloft.cloud/hooks/deploy-senji \
@@ -346,22 +501,38 @@ curl -f -X POST https://deploy.myloft.cloud/hooks/deploy-senji \
 
 ## Troubleshooting
 
-**`PayloadTooLargeError` in readability logs**
-```bash
-# Already fixed: express.json({ limit: '10mb' }) in senji-readability/src/index.js
-docker compose restart readability
-```
-
 **401 on all requests**
 ```bash
-# Check token matches
 grep SENJI_TOKEN .env
-# Force-recreate to pick up env change
 docker compose up --force-recreate gateway
 ```
 
-**Docling 503 on PDF upload**
+**Gateway fails to start / `ValidationError: ollama_base_url`**
 ```bash
-docker compose logs docling --tail=20
-# First request triggers model download (~2 GB) — wait and retry
+# OLLAMA_BASE_URL is required — must be set in .env
+echo "OLLAMA_BASE_URL=http://10.1.1.222:11434" >> .env
+docker compose up --force-recreate gateway
+```
+
+**`ollama_unavailable` on image ingest**
+```bash
+docker compose exec gateway curl -s $OLLAMA_BASE_URL/api/tags
+# If this fails, Ollama is unreachable from the container
+```
+
+**Job stuck in `queued`**
+```bash
+docker compose logs gateway --tail=50
+# Common cause: Ollama unreachable at startup → ollama_client.available = False
+```
+
+**`PayloadTooLargeError` in readability logs**
+```bash
+docker compose restart readability
+```
+
+**obsidian-remote blank screen**
+```bash
+docker compose restart obsidian-remote
+# Known upstream bug — restart resolves it
 ```
