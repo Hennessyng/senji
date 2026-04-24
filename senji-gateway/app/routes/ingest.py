@@ -77,7 +77,7 @@ async def ingest_file(
             content={
                 "error": "unsupported_media_type",
                 "detail": (
-                    "HEIC not supported \u2014 convert to JPEG/PNG/WebP "
+                    "HEIC not supported — convert to JPEG/PNG/WebP "
                     "client-side"
                 ),
             },
@@ -150,3 +150,29 @@ async def ingest_file(
         },
     )
     return IngestFileResponse(job_id=job.job_id, status="queued")
+
+
+@router.get("/jobs/{job_id}")
+async def get_job_status(request: Request, job_id: str) -> JSONResponse:
+    queue = request.app.state.job_queue
+    try:
+        job = queue.get_status(job_id)
+        return JSONResponse(
+            status_code=200,
+            content={
+                "job_id": job.job_id,
+                "type": job.type,
+                "status": job.status,
+                "files_written": job.files_written,
+                "error_detail": job.error_detail,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            },
+        )
+    except ValueError:
+        logger.warning("Job not found", extra={"job_id": job_id})
+        return JSONResponse(
+            status_code=404,
+            content={"error": "job_not_found", "detail": f"Job {job_id!r} not found"},
+        )

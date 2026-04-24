@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WFWorkflowActions</key>
+	<array>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.downloadurl</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFHTTPBodyType</key>
+				<string>JSON</string>
+				<key>WFHTTPHeaders</key>
+				<dict>
+					<key>Authorization</key>
+					<dict>
+						<key>WFSerializationType</key>
+						<string>WFTextSerializationObject</string>
+						<key>string</key>
+						<string>Bearer {API_TOKEN}</string>
+					</dict>
+				</dict>
+				<key>WFHTTPMethod</key>
+				<integer>1</integer>
+				<key>WFJSONValues</key>
+				<dict>
+					<key>tags</key>
+					<array/>
+					<key>url</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>0</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>C4A30A44-CF6D-4B56-9109-6506472D3F17</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>1</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>3415A138-3E18-4BCC-95E9-94AE85225F3E</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>10</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>D5DB6979-3DDB-4356-BEF3-B461659A62F1</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>11</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>31ECE579-6C45-4D39-9928-6CF817F3FBF6</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>12</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>05E62A51-6E62-493B-ABC8-C1119F451EBD</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>13</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>495923B0-0DF8-4433-8372-665C54DB0AAE</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>2</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>D0D5F4A5-EB09-4283-8A1F-C3E76CA4E802</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>3</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>9312BA41-067D-4648-96BA-FB4E3CD31F33</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>4</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>0EC1F653-0DD8-444D-92C3-92C8212C90A2</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>5</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>4E436896-6F6D-499F-8546-72213F3513BB</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>6</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>0A869F85-F205-4EA2-BFAB-63A3B4BF584A</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>7</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>534EFDFF-6DC3-4AD2-8A2A-FD786C93FB56</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>8</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>5E273EF6-F7C4-403E-AC7A-F50D894B1945</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+							<key>9</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Shortcut Input</string>
+								<key>OutputUUID</key>
+								<string>B4363C6F-72E0-41DB-ABBB-B309EB13A77B</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼Shortcut Input￼</string>
+					</dict>
+				</dict>
+				<key>WFURLActionURL</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>https://markdown.myloft.cloud/api/ingest/url</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFConditionalActionString</key>
+				<string>202</string>
+				<key>WFControlFlowCondition</key>
+				<integer>0</integer>
+				<key>WFInput</key>
+				<dict>
+					<key>attachmentsByRange</key>
+					<dict>
+						<key>0</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>00606294-3C43-454C-BE4A-67819DC79511</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>1</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>DA88CDA7-76EC-4947-A10D-4076E22F8B79</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>10</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>CBC82A08-FA86-420E-815A-D1DAC23DCD81</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>2</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>2D839A14-AF22-489E-A900-B23A326C90D0</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>3</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>D77EE0A7-6447-493D-BD8B-49A538119F32</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>4</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>1F55B48F-2F74-4375-8AFE-9A068C26D4D3</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>5</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>61E836BD-8036-449F-A7A2-C420035A8B0C</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>6</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>40E862E8-3F48-41F8-A264-3B8544977ACD</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>7</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>4AFA93DD-4AC2-4BE1-9946-1A7306ABE461</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>8</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>B3884362-B1B7-420E-8C41-C411EB592A37</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>9</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>816E520B-6CE1-467F-B1AB-3974E6DE3A45</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+					</dict>
+					<key>string</key>
+					<string>￼Status Code￼</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.notification</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFNotificationActionBody</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>Queued: ￼Result￼</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFControlFlowCondition</key>
+				<integer>2</integer>
+				<key>WFInput</key>
+				<dict>
+					<key>attachmentsByRange</key>
+					<dict>
+						<key>0</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>60E9DFBD-8D9D-4279-BA91-500D5E1DC363</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>1</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>521E0B67-7F91-4614-858F-E0B10B3FC91E</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>10</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>21432165-C2F7-4313-BE9B-373843368C90</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>2</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>567982CE-430D-4A5B-8CB2-BCF5D9EE63CF</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>3</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>D58E8EBB-D734-4DFD-8E39-CE0859B52FD9</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>4</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>1A1DA90E-D752-4608-BF26-4EDB71A0BA66</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>5</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>6D1F3D1B-7C3A-4FDD-A65B-9AFAEA03393A</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>6</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>B624B8B9-9887-4730-A68C-FFBCA19412F7</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>7</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>27A18284-5A88-4386-8DF6-7974328D9E64</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>8</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>09D7E858-C6A5-43A0-A56E-9E31B6A50CB0</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>9</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Status Code</string>
+							<key>OutputUUID</key>
+							<string>63CB285D-D1B3-4AB7-A140-893EEEB60199</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+					</dict>
+					<key>string</key>
+					<string>￼Status Code￼</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.alert</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFAlertActionMessage</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>￼Result￼</string>
+				</dict>
+				<key>WFAlertActionTitle</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>Error</string>
+				</dict>
+			</dict>
+		</dict>
+	</array>
+	<key>WFWorkflowClientVersion</key>
+	<dict>
+		<key>WFWorkflowMinimumClientRelease</key>
+		<integer>900</integer>
+		<key>WFWorkflowMinimumClientVersion</key>
+		<integer>900</integer>
+	</dict>
+	<key>WFWorkflowInputTypes</key>
+	<array>
+		<string>public.url</string>
+	</array>
+	<key>WFWorkflowTypes</key>
+	<integer>1</integer>
+</dict>
+</plist>

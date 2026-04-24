@@ -93,6 +93,7 @@ actions = [
 shortcut = {
     "WFWorkflowTypes": 1,
     "WFWorkflowInputTypes": ["public.url"],
+    "WFWorkflowInputContentItemClasses": ["com.apple.core.url"],
     "WFWorkflowActions": actions,
     "WFWorkflowClientVersion": {"WFWorkflowMinimumClientRelease": 900, "WFWorkflowMinimumClientVersion": 900}
 }

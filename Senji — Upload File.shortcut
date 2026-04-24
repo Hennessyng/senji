@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WFWorkflowActions</key>
+	<array>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.ask.for.document</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFAskActionRequestType</key>
+				<integer>18</integer>
+				<key>WFInputActionString</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>Choose file to upload</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.downloadurl</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFFormValues</key>
+				<array>
+					<dict>
+						<key>Key</key>
+						<string>file</string>
+						<key>Value</key>
+						<dict>
+							<key>attachmentsByRange</key>
+							<dict>
+								<key>0</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>650EC969-607D-4A57-A26A-802E60B42EEC</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>1</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>2F5CDB03-5B8F-44F2-96A1-B19CCFD17D73</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>10</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>D828AD74-7B49-4F51-81CE-2F2EB24955F6</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>11</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>7247EA97-1845-4999-BAE2-B06C6CCBBB42</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>12</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>68F15E2B-2EDA-440A-B063-9152A2F7C90C</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>13</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>59B79ADC-1B67-454E-8788-901C9D01C6DC</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>2</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>3F013D8E-609B-4921-AE10-AD822A16886C</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>3</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>37F9AA57-4FE8-4E41-9F83-813FD5A2FB6C</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>4</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>1106636B-18FE-4019-BF47-09C18EC37ABC</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>5</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>F186FE98-3AA7-42C9-90FE-F98DD506615D</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>6</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>35A78E58-DB05-469B-ADBC-6BD268507EC7</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>7</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>0036B96A-1B9D-44D3-93C8-35C8297931BE</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>8</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>3F44B501-7403-453E-A619-577A8F7DD004</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+								<key>9</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Provided Media</string>
+									<key>OutputUUID</key>
+									<string>C668F813-6B8C-4C70-91BD-49521DDA35CB</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+							</dict>
+							<key>string</key>
+							<string>￼Provided Media￼</string>
+						</dict>
+					</dict>
+				</array>
+				<key>WFHTTPBodyType</key>
+				<string>Form</string>
+				<key>WFHTTPHeaders</key>
+				<dict>
+					<key>Authorization</key>
+					<dict>
+						<key>WFSerializationType</key>
+						<string>WFTextSerializationObject</string>
+						<key>string</key>
+						<string>Bearer {API_TOKEN}</string>
+					</dict>
+				</dict>
+				<key>WFHTTPMethod</key>
+				<integer>1</integer>
+				<key>WFURLActionURL</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>https://markdown.myloft.cloud/api/ingest/file</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.notification</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFNotificationActionBody</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>Uploaded: ￼Result￼</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.alert</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFAlertActionMessage</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>￼Result￼</string>
+				</dict>
+				<key>WFAlertActionTitle</key>
+				<dict>
+					<key>WFSerializationType</key>
+					<string>WFTextSerializationObject</string>
+					<key>string</key>
+					<string>Error</string>
+				</dict>
+			</dict>
+		</dict>
+	</array>
+	<key>WFWorkflowClientVersion</key>
+	<dict>
+		<key>WFWorkflowMinimumClientRelease</key>
+		<integer>900</integer>
+		<key>WFWorkflowMinimumClientVersion</key>
+		<integer>900</integer>
+	</dict>
+	<key>WFWorkflowInputTypes</key>
+	<array>
+		<string>public.data</string>
+	</array>
+	<key>WFWorkflowTypes</key>
+	<integer>1</integer>
+</dict>
+</plist>
