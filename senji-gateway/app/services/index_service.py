@@ -38,21 +38,21 @@ def append_to_index(
     """
     vault = Path(vault_path)
     index_file = vault / "index.md"
-    
+
     escaped_title = title.replace("|", "\\|")
     new_entry = f"| {slug} | {escaped_title} | {ingest_type} |\n"
-    
+
     full_text = _read_or_create_index(index_file)
-    
+
     if _entry_exists(full_text, slug):
         logger.info(
             "Duplicate index entry skipped",
             extra={"job_id": job_id, "slug": slug},
         )
         return
-    
+
     full_text += new_entry
-    
+
     _atomic_write(index_file, full_text, job_id, "index")
 
 
@@ -83,12 +83,12 @@ def append_to_log(
     """
     vault = Path(vault_path)
     log_file = vault / "log.md"
-    
+
     new_entry = f"| {job_id} | {slug} | {ingest_type} | {status} | {error_detail} |\n"
-    
+
     full_text = _read_or_create_log(log_file)
     full_text += new_entry
-    
+
     _atomic_write(log_file, full_text, job_id, "log")
 
 
@@ -132,17 +132,17 @@ def _atomic_write(file_path: Path, content: str, job_id: str, file_type: str) ->
         OSError: If write or rename fails after retry
     """
     import time
-    
+
     tmp_file = file_path.with_suffix(file_path.suffix + ".tmp")
     max_retries = 3
     retry_delay = 0.01
-    
+
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(tmp_file, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         for attempt in range(max_retries):
             try:
                 os.rename(tmp_file, file_path)
@@ -152,7 +152,7 @@ def _atomic_write(file_path: Path, content: str, job_id: str, file_type: str) ->
                     time.sleep(retry_delay * (attempt + 1))
                     continue
                 raise
-        
+
         logger.info(
             f"{file_type} write complete",
             extra={"job_id": job_id, "path": str(file_path), "bytes": len(content)},

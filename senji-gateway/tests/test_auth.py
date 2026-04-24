@@ -55,7 +55,10 @@ async def test_health_is_exempt_without_token() -> None:
         response = await client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    body = response.json()
+    assert body["status"] in ("healthy", "degraded")
+    assert "vault_accessible" in body
+    assert "version" in body
 
 
 @pytest.mark.asyncio

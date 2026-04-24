@@ -8,8 +8,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from app.config import settings
 
 logger = logging.getLogger("senji.pics.embedding_service")

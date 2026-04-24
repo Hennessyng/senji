@@ -42,8 +42,10 @@ async def ingest_url(
 async def ingest_file(
     request: Request,
     file: Annotated[UploadFile, File(...)],
-    tags: Annotated[list[str], Form()] = [],
+    tags: Annotated[list[str] | None, Form()] = None,
 ) -> IngestFileResponse | JSONResponse:
+    if tags is None:
+        tags = []
     content_type = (file.content_type or "").lower()
 
     if content_type in _ALLOWED_PDF_TYPES:

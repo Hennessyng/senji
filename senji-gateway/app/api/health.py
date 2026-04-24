@@ -19,7 +19,7 @@ async def health(request: Request) -> dict:
     db_path = Path(settings.sqlite_db_path)
     jobs_db_accessible = db_path.exists()
 
-    ollama_client = request.app.state.ollama_client
+    ollama_client = getattr(request.app.state, "ollama_client", None)
     ollama_accessible = bool(getattr(ollama_client, "available", False))
 
     index_exists = (vault_path / "index.md").exists() if vault_accessible else False

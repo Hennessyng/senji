@@ -24,10 +24,9 @@ import os
 import subprocess
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
-from typing import Any
 
 # ── Config ────────────────────────────────────────────────────────────────────
 GATEWAY_URL = "http://localhost:7878"
@@ -56,7 +55,7 @@ class Suite:
 
     def add(self, r: Result) -> None:
         self.results.append(r)
-        tag = f"\033[32m[PASS]\033[0m" if r.passed else f"\033[31m[FAIL]\033[0m"
+        tag = "\033[32m[PASS]\033[0m" if r.passed else "\033[31m[FAIL]\033[0m"
         print(f"{tag} {r.name}", end="")
         if r.detail:
             print(f" — {r.detail}", end="")
@@ -391,7 +390,7 @@ def test_readability_direct() -> Result:
 # ── Runner ────────────────────────────────────────────────────────────────────
 def run(url: str, verbose: bool) -> int:
     suite = Suite()
-    print(f"\n\033[1m=== senji agentic self-test ===\033[0m")
+    print("\n\033[1m=== senji agentic self-test ===\033[0m")
     print(f"Gateway: {GATEWAY_URL}  Token: {TOKEN}\n")
 
     gw = test_gateway_reachable()

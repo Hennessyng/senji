@@ -27,12 +27,12 @@ def make_slug(title: str, date_prefix: str | None = None) -> str:
     title_cleaned = title
     for char in unsafe_filesystem_chars:
         title_cleaned = title_cleaned.replace(char, ' ')
-    
+
     title_transliterated = unidecode(title_cleaned)
     slug = slugify(title_transliterated, lowercase=True, word_boundary=True)
     slug = slug.strip('-')[:80]
-    
+
     if date_prefix:
         slug = f"{date_prefix}-{slug}"
-    
+
     return slug

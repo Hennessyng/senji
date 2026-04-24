@@ -77,8 +77,8 @@ def patch_embeddings(monkeypatch) -> None:
         AsyncMock(return_value=[0.1] * 384),
     )
     monkeypatch.setattr(
-        "app.services.job_queue.EmbeddingService.save_embedding",
-        MagicMock(return_value=None),
+        "app.services.job_queue.EmbeddingService.cache_embedding",
+        AsyncMock(return_value=None),
     )
 
 

@@ -23,7 +23,7 @@ def extract_article(html: str, source_url: str) -> dict:
             raise ValueError("Trafilatura returned empty extraction")
 
         metadata = extract_metadata(html)
-        
+
         return {
             "markdown": doc,
             "title": metadata.title or "Untitled",

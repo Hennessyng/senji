@@ -1,7 +1,7 @@
 import os
 
-import pytest
 import httpx
+import pytest
 
 BASE_URL = os.environ.get("SENJI_BASE_URL", "http://localhost:8000")
 TOKEN = os.environ.get("SENJI_TOKEN", "dev-token")

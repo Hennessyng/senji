@@ -1,5 +1,4 @@
 """Tests for slug/filename utilities."""
-import pytest
 from app.utils.slugify import make_slug
 
 

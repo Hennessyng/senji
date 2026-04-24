@@ -400,65 +400,6 @@ class JobQueue:
             raise RuntimeError("JobQueue has no vault_writer; cannot process PDF jobs")
 
         self.mark_processing(job_id)
-        try:
-            pdf_path = Path(job.source_path)
-            markdown = pymupdf4llm.to_markdown(str(pdf_path))
-            if not markdown.strip():
-                raise IngestError("PDF extraction returned empty content")
-
-            page_count = 0
-            with pymupdf.open(str(pdf_path)) as doc:
-                page_count = doc.page_count
-
-            title = job.original_filename or "untitled"
-            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-            slug = make_slug(title, date_prefix=date_str)
-            fm = {
-                "title": title,
-                "source": job.original_filename or "upload.pdf",
-                "date": date_str,
-                "type": "pdf",
-                "tags": job.tags,
-                "pages": page_count,
-            }
-            path = self._vault_writer.save_raw(slug, markdown, fm)
-            pdf_path.unlink(missing_ok=True)
-            self.mark_completed(job_id, files_written=[str(path)])
-            ingest_logger.info(
-                "PDF ingest complete",
-                extra={
-                    "job_id": job_id,
-                    "pdf_file": job.original_filename,
-                    "path": str(path),
-                },
-            )
-        except IngestError as exc:
-            detail = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
-            self.mark_failed(job_id, error=detail)
-            ingest_logger.error(
-                "PDF ingest failed",
-                extra={"job_id": job_id, "pdf_file": job.original_filename, "error": detail},
-            )
-        except Exception as exc:
-            self.mark_failed(job_id, error=str(exc))
-            ingest_logger.error(
-                "PDF ingest crashed",
-                extra={
-                    "job_id": job_id,
-                    "pdf_file": job.original_filename,
-                    "error": str(exc),
-                },
-                exc_info=True,
-            )
-
-    async def process_pdf_job(self, job_id: str) -> None:
-        job = self.get_status(job_id)
-        if job.type != "pdf" or not job.source_path:
-            raise ValueError(f"Job {job_id} is not a PDF ingest job")
-        if self._vault_writer is None:
-            raise RuntimeError("JobQueue has no vault_writer; cannot process PDF jobs")
-
-        self.mark_processing(job_id)
         tmp_path = Path(job.source_path)
         try:
             try:

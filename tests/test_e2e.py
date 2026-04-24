@@ -5,8 +5,8 @@ Services must be running: docker compose up -d
 """
 import os
 
-import pytest
 import httpx
+import pytest
 
 pytestmark = pytest.mark.timeout(120)
 

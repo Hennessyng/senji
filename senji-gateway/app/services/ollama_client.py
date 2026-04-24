@@ -64,17 +64,16 @@ class OllamaClient:
 
     async def _stream_generate(self, payload: dict) -> str:
         chunks: list[str] = []
-        async with httpx.AsyncClient(timeout=_GENERATE_TIMEOUT) as client:
-            async with client.stream(
-                "POST", f"{self.base_url}/api/generate", json=payload
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.strip():
-                        continue
-                    data = json.loads(line)
-                    if chunk := data.get("response"):
-                        chunks.append(chunk)
+        async with httpx.AsyncClient(timeout=_GENERATE_TIMEOUT) as client, client.stream(
+            "POST", f"{self.base_url}/api/generate", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                if chunk := data.get("response"):
+                    chunks.append(chunk)
         return "".join(chunks)
 
     async def generate(

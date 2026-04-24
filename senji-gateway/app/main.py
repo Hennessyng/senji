@@ -5,11 +5,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.api.health import router as health_router
 from app.config import settings
 from app.logging import setup_logging
 from app.middleware.auth import BearerAuthMiddleware
 from app.middleware.error_handler import RequestLoggingMiddleware, add_exception_handlers
-from app.api.health import router as health_router
 from app.routes.convert import router as convert_router
 from app.routes.ingest import router as ingest_router
 from app.services.job_queue import JobQueue
