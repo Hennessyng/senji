@@ -4,6 +4,8 @@ services:
     ports:
       - "7878:8000"
     env_file: .env
+    volumes:
+      - vault:/opt/vault
     restart: unless-stopped
     depends_on:
       readability:
@@ -37,7 +39,7 @@ services:
     ports:
       - "7899:8080"
     volumes:
-      - /opt/vault:/vaults
+      - vault:/vaults
     environment:
       - PUID=1000
       - PGID=1000
@@ -52,7 +54,7 @@ services:
       - "8080:8080"
     volumes:
       - open-webui-data:/app/backend/data
-      - /opt/vault:/vault:ro
+      - vault:/vault:ro
     environment:
       - OLLAMA_BASE_URL=http://10.1.1.222:11434
       - WEBUI_AUTH=true
@@ -67,3 +69,9 @@ networks:
 
 volumes:
   open-webui-data:
+  vault:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: nfsvers=4,addr=10.1.1.250,hard,timeo=600,retrans=2,rw
+      device: ":/local/dockerdata/vault"
