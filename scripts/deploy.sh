@@ -27,7 +27,7 @@ log "Ensuring obsidian-remote is running"
 docker compose up -d obsidian-remote
 
 log "Waiting for services to be healthy (up to 60s)"
-for i in $(seq 1 12); do
+for i in $(seq 1 24); do
     gw_ok=$(docker compose ps gateway    | grep -c '(healthy)' || true)
     rd_ok=$(docker compose ps readability | grep -c '(healthy)' || true)
     if [ "$gw_ok" -ge 1 ] && [ "$rd_ok" -ge 1 ]; then
@@ -35,7 +35,7 @@ for i in $(seq 1 12); do
         sleep 3   # brief stabilisation — let FastAPI finish startup tasks
         break
     fi
-    if [ "$i" -eq 12 ]; then
+    if [ "$i" -eq 24 ]; then
         log "ERROR: Services did not become healthy in time"
         docker compose logs gateway --tail=20 >> "$LOG"
         docker compose logs readability --tail=20 >> "$LOG"
