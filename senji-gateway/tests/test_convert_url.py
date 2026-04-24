@@ -33,7 +33,10 @@ async def test_valid_url_returns_200(mock_fetch, mock_readability) -> None:
 
     assert response.status_code == 200
     data = response.json()
-    assert data["markdown"] == "# Hello"
+    # Markdown includes frontmatter prepended by _build_markdown()
+    assert "# Hello" in data["markdown"]
+    assert 'source: "https://example.com/final"' in data["markdown"]
+    assert 'title: "Hello Page"' in data["markdown"]
     assert data["title"] == "Hello Page"
     assert data["source"] == "https://example.com/final"
     assert data["media"] == []

@@ -32,7 +32,10 @@ async def test_full_html_returns_200(mock_readability) -> None:
 
     assert response.status_code == 200
     data = response.json()
-    assert data["markdown"] == "# Hello"
+    # Markdown includes frontmatter prepended by _build_markdown()
+    assert "# Hello" in data["markdown"]
+    assert 'source: "paste"' in data["markdown"]
+    assert 'title: "Hello Page"' in data["markdown"]
     assert data["title"] == "Hello Page"
     assert data["source"] == "paste"
     assert data["media"] == []

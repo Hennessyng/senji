@@ -83,8 +83,12 @@ actions = [
 ]
 
 shortcut = {
-    "WFWorkflowTypes": 1,
+    "WFWorkflowHasShortcutInputVariables": True,
+    "WFWorkflowTypes": ["ActionExtension"],
+    "WFWorkflowInputContentItemClasses": ["WFGenericFileContentItem"],
     "WFWorkflowInputTypes": ["public.data"],
+    "ReceivesTypes": ["public.data"],
+    "ShareSheet": True,
     "WFWorkflowActions": actions,
     "WFWorkflowClientVersion": {"WFWorkflowMinimumClientRelease": 900, "WFWorkflowMinimumClientVersion": 900}
 }

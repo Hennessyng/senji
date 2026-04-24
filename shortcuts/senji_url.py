@@ -91,9 +91,12 @@ actions = [
 ]
 
 shortcut = {
-    "WFWorkflowTypes": 1,
+    "WFWorkflowHasShortcutInputVariables": True,
+    "WFWorkflowTypes": ["ActionExtension"],
+    "WFWorkflowInputContentItemClasses": ["WFURLContentItem"],
     "WFWorkflowInputTypes": ["public.url"],
-    "WFWorkflowInputContentItemClasses": ["com.apple.core.url"],
+    "ReceivesTypes": ["public.url"],
+    "ShareSheet": True,
     "WFWorkflowActions": actions,
     "WFWorkflowClientVersion": {"WFWorkflowMinimumClientRelease": 900, "WFWorkflowMinimumClientVersion": 900}
 }

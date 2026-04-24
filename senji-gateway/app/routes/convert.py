@@ -1,6 +1,5 @@
 import logging
 from typing import Annotated
-from unittest.mock import Mock
 
 import httpx
 from fastapi import APIRouter, File, Request, UploadFile
@@ -18,8 +17,6 @@ router = APIRouter(prefix="/api/convert")
 
 
 def _build_markdown(markdown: str, source: str, title: str, clip_type: str, service: object) -> str:
-    if isinstance(service, Mock):
-        return markdown
     return prepend_frontmatter(markdown, source, title, clip_type)
 
 
