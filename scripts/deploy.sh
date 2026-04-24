@@ -12,6 +12,7 @@ cd "$REPO"
 
 log "Pulling latest code"
 git pull --ff-only
+[[ "${SENJI_REFRESHED:-0}" == "1" ]] || exec env SENJI_REFRESHED=1 bash "$REPO/scripts/deploy.sh"
 
 # Generate live hooks.json with real secret from .env
 set -o allexport; source "$REPO/.env"; set +o allexport
