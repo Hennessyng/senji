@@ -14,13 +14,24 @@ def _var(name):
         "attachmentsByRange": {str(i): {"Type": "ActionOutput", "OutputName": name, "OutputUUID": _uid()} for i in range(len(name))}
     }
 
+def _bearer_token(var_name):
+    prefix = "Bearer "
+    var_part = f"￼{var_name}￼"
+    return {
+        "string": prefix + var_part,
+        "attachmentsByRange": {
+            str(len(prefix) + i): {"Type": "Variable", "OutputName": var_name, "OutputUUID": _uid()}
+            for i in range(len(var_name))
+        }
+    }
+
 def _post_file(url, file_var):
     return {
         "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
         "WFWorkflowActionParameters": {
             "WFURLActionURL": _text(url),
             "WFHTTPMethod": 1,
-            "WFHTTPHeaders": {"Authorization": _text("Bearer {API_TOKEN}")},
+            "WFHTTPHeaders": {"Authorization": _bearer_token("API_TOKEN")},
             "WFHTTPBodyType": "Form",
             "WFFormValues": [
                 {
