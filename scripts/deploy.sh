@@ -18,8 +18,6 @@ set -o allexport; source "$REPO/.env"; set +o allexport
 sed "s/REPLACE_WITH_YOUR_WEBHOOK_SECRET/$WEBHOOK_SECRET/" \
   "$REPO/webhook/hooks.json" > /etc/senji-hooks-live.json
 log "Generated live hooks.json"
-systemctl restart senji-webhook
-log "Restarted webhook service"
 
 log "Rebuilding gateway and readability"
 docker compose up -d --build gateway readability
@@ -49,6 +47,11 @@ done
 log "Running self-test"
 if python3 "$REPO/tests/agentic_self_test.py" >> "$LOG" 2>&1; then
     log "Self-test passed — deploy complete"
+    # Sync service file and reload webhook last — this restarts our parent process
+    cp "$REPO/webhook/senji-webhook.service" /etc/systemd/system/senji-webhook.service
+    systemctl daemon-reload
+    systemctl restart senji-webhook
+    log "Webhook service synced and restarted"
 else
     log "ERROR: Self-test failed — rolling back"
     git stash 2>/dev/null || true
