@@ -40,12 +40,13 @@ services:
       - "7899:8080"
     volumes:
       - vault:/vaults
+      - obsidian-config:/config
     environment:
       - PUID=1000
       - PGID=1000
     restart: unless-stopped
-    mem_limit: 256m
-    memswap_limit: 256m
+    mem_limit: 1g
+    memswap_limit: 1g
     networks: [senji-net]
 
 networks:
@@ -53,9 +54,11 @@ networks:
     driver: bridge
 
 volumes:
+  obsidian-config:
+
   vault:
     driver: local
     driver_opts:
       type: nfs
-      o: nfsvers=4,addr=10.1.1.250,hard,timeo=600,retrans=2,rw
+      o: nfsvers=4,addr=10.1.1.250,hard,timeo=600,retrans=2,rw,noac
       device: ":/local/dockerdata/vault"
