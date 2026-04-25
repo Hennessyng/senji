@@ -51,7 +51,7 @@ services:
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     ports:
-      - "8080:8080"
+      - "8082:8080"
     volumes:
       - open-webui-data:/app/backend/data
       - vault:/vault:ro
