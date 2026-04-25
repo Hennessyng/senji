@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.health import router as health_router
@@ -48,6 +49,12 @@ app = FastAPI(title="Senji Gateway", lifespan=lifespan)
 app.state.settings = settings
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(BearerAuthMiddleware, token=settings.senji_token)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 add_exception_handlers(app)
 
 setup_logging(settings.log_level)
