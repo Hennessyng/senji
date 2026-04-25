@@ -48,27 +48,11 @@ services:
     memswap_limit: 256m
     networks: [senji-net]
 
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    ports:
-      - "8082:8080"
-    volumes:
-      - open-webui-data:/app/backend/data
-      - vault:/vault:ro
-    environment:
-      - OLLAMA_BASE_URL=http://10.1.1.222:11434
-      - WEBUI_AUTH=true
-    restart: unless-stopped
-    mem_limit: 1g
-    memswap_limit: 1g
-    networks: [senji-net]
-
 networks:
   senji-net:
     driver: bridge
 
 volumes:
-  open-webui-data:
   vault:
     driver: local
     driver_opts:
