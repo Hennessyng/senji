@@ -52,6 +52,7 @@ initializeResultsActions();
 urlConvertButton.addEventListener("click", handleUrlConvert);
 urlIngestBtn.addEventListener('click', handleUrlIngest);
 uploadIngestBtn.addEventListener('click', handleFileIngest);
+checkUrlJobParam();
 
 function initializeTheme() {
   const storedTheme = localStorage.getItem(THEME_KEY);
@@ -241,6 +242,16 @@ function startJobPolling(jobId, token) {
       if (job.status === 'complete' || job.status === 'failed') clearInterval(id);
     } catch { }
   }, 2000);
+}
+
+function checkUrlJobParam() {
+  const params = new URLSearchParams(window.location.search);
+  const jobId = params.get('job');
+  if (!jobId) return;
+  const token = ensureToken();
+  if (!token) return;
+  window.history.replaceState({}, '', window.location.pathname);
+  startJobPolling(jobId, token);
 }
 
 function showJobStatus(status, job = null) {
