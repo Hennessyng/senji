@@ -10,6 +10,12 @@ const copyButton = document.getElementById("copy-btn");
 const downloadButton = document.getElementById("download-btn");
 const urlInput = document.getElementById("url-input");
 const urlConvertButton = document.getElementById("url-convert-btn");
+const urlIngestBtn = document.getElementById('url-ingest-btn');
+const uploadIngestBtn = document.getElementById('upload-ingest-btn');
+const jobStatusSection = document.getElementById('job-status');
+const jobStatusText = document.getElementById('job-status-text');
+const jobStatusIcon = document.getElementById('job-status-icon');
+const jobIdDisplay = document.getElementById('job-id-display');
 
 const tabs = [
   document.getElementById("url-tab"),
@@ -44,6 +50,8 @@ initializeTheme();
 initializeTabs();
 initializeResultsActions();
 urlConvertButton.addEventListener("click", handleUrlConvert);
+urlIngestBtn.addEventListener('click', handleUrlIngest);
+uploadIngestBtn.addEventListener('click', handleFileIngest);
 
 function initializeTheme() {
   const storedTheme = localStorage.getItem(THEME_KEY);
@@ -169,6 +177,85 @@ function setLoadingState(isLoading) {
   urlInput.disabled = isLoading;
   urlConvertButton.classList.toggle("loading", isLoading);
   urlConvertButton.textContent = isLoading ? "Converting" : "Convert";
+}
+
+async function handleUrlIngest() {
+  hideError();
+  const url = urlInput.value.trim();
+  if (!url) { showError('Enter a URL before saving.'); urlInput.focus(); return; }
+  const token = ensureToken();
+  if (!token) { showError('Bearer token required.'); return; }
+  urlIngestBtn.disabled = true;
+  try {
+    const response = await fetch('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    const payload = await parseJson(response);
+    if (!response.ok) throw new Error(getApiErrorMessage(payload, response.status));
+    startJobPolling(payload.job_id, token);
+  } catch (error) {
+    showError(readErrorMessage(error, 'Ingest failed.'));
+  } finally {
+    urlIngestBtn.disabled = false;
+  }
+}
+
+async function handleFileIngest() {
+  if (!selectedFile) return;
+  const token = ensureToken();
+  if (!token) { showError('Bearer token required.'); return; }
+  uploadIngestBtn.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    const response = await fetch('/api/ingest/file', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const payload = await parseJson(response);
+    if (!response.ok) throw new Error(getApiErrorMessage(payload, response.status));
+    startJobPolling(payload.job_id, token);
+  } catch (error) {
+    showError(readErrorMessage(error, 'Ingest failed.'));
+  } finally {
+    uploadIngestBtn.disabled = false;
+  }
+}
+
+function startJobPolling(jobId, token) {
+  jobIdDisplay.textContent = jobId;
+  showJobStatus('queued');
+  let attempts = 0;
+  const MAX = 60;
+  const id = setInterval(async () => {
+    if (++attempts > MAX) { clearInterval(id); showJobStatus('timeout'); return; }
+    try {
+      const r = await fetch(`/api/ingest/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const job = await parseJson(r);
+      showJobStatus(job.status, job);
+      if (job.status === 'complete' || job.status === 'failed') clearInterval(id);
+    } catch { }
+  }, 2000);
+}
+
+function showJobStatus(status, job = null) {
+  const icons = { queued: '⏳', processing: '⚙️', complete: '✅', failed: '❌', timeout: '⚠️' };
+  const texts = {
+    queued: 'Queued — waiting to process...',
+    processing: 'Processing — converting and generating wiki...',
+    complete: `Saved to vault${job?.files_written?.length ? ' — ' + job.files_written.join(', ') : ''}`,
+    failed: `Failed${job?.error_detail ? ': ' + job.error_detail : ''}`,
+    timeout: 'Timed out — check server logs',
+  };
+  jobStatusIcon.textContent = icons[status] ?? '⏳';
+  jobStatusText.textContent = texts[status] ?? status;
+  jobStatusSection.dataset.status = status;
+  jobStatusSection.style.display = 'block';
 }
 
 function showError(message) {
@@ -309,6 +396,8 @@ function setSelectedFile(file) {
   fileInfo.style.display = "block";
   fileConvertBtn.style.display = "block";
   fileConvertBtn.disabled = false;
+  uploadIngestBtn.style.display = 'block';
+  uploadIngestBtn.disabled = false;
   hideError();
 }
 
@@ -393,6 +482,8 @@ function clearAll() {
   fileInfo.style.display = "none";
   fileConvertBtn.style.display = "none";
   fileConvertBtn.disabled = true;
+  uploadIngestBtn.style.display = 'none';
+  jobStatusSection.style.display = 'none';
   resultsArea.style.display = "none";
   markdownOutput.textContent = "";
   currentMarkdown = "";

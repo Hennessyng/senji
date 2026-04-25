@@ -76,7 +76,10 @@
                         />
                         <p id="url-help" class="input-help">Enter a webpage URL to convert to markdown</p>
                     </div>
-                    <button class="button button--primary" id="url-convert-btn">Convert</button>
+                    <div class="action-row">
+                        <button class="button button--primary" id="url-convert-btn">Convert</button>
+                        <button class="button button--success" id="url-ingest-btn">Save to Vault</button>
+                    </div>
                 </div>
 
                 <!-- Upload Tab Panel -->
@@ -103,6 +106,7 @@
                         <p><strong>Size:</strong> <span id="file-size"></span></p>
                     </div>
                     <button class="button button--primary" id="upload-convert-btn" style="display: none">Convert</button>
+                    <button class="button button--success" id="upload-ingest-btn" style="display: none">Save to Vault</button>
                 </div>
 
                 <!-- Paste Tab Panel -->
@@ -125,6 +129,15 @@
                     </div>
                     <button class="button button--primary" id="paste-convert-btn">Convert</button>
                 </div>
+            </div>
+
+            <!-- Job Status -->
+            <div id="job-status" class="job-status" style="display: none" role="status" aria-live="polite">
+                <div class="job-status-header">
+                    <span id="job-status-icon" aria-hidden="true"></span>
+                    <span id="job-status-text"></span>
+                </div>
+                <p class="job-id">Job: <code id="job-id-display"></code></p>
             </div>
 
             <!-- Error Banner -->
