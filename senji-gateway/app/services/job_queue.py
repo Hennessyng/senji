@@ -21,6 +21,7 @@ from app.config import settings
 from app.errors import IngestError, OllamaUnavailableError, WikiError
 from app.services.embedding_service import EmbeddingService
 from app.services.index_service import append_to_index, append_to_log
+from app.services.readability_client import convert_html as readability_convert
 from app.services.trafilatura_service import extract_article
 from app.services.wiki_service import generate_wiki_entry
 from app.utils.slugify import make_slug
@@ -317,14 +318,23 @@ class JobQueue:
             html = await self._fetch_html(job.source_url)
             try:
                 extracted = extract_article(html, job.source_url)
-            except ValueError as exc:
-                raise IngestError(
-                    "trafilatura returned empty content", detail=str(exc)
-                ) from exc
+                markdown = extracted.get("markdown") or ""
+                if not markdown.strip():
+                    raise ValueError("trafilatura returned empty markdown")
+            except ValueError:
+                logger.warning(
+                    "Trafilatura failed for %s, falling back to readability",
+                    job.source_url,
+                )
+                try:
+                    readable = await readability_convert(settings.readability_url, html)
+                    extracted = {"markdown": readable.markdown, "title": readable.title}
+                except Exception as exc:
+                    raise IngestError(
+                        "trafilatura returned empty content", detail=str(exc)
+                    ) from exc
 
             markdown = extracted.get("markdown") or ""
-            if not markdown.strip():
-                raise IngestError("trafilatura returned empty content")
 
             title = extracted.get("title") or "untitled"
             date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
