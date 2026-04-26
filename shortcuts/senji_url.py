@@ -1,107 +1,278 @@
 #!/usr/bin/env python3
-import plistlib
-import uuid
+"""
+Generate 'Senji — Clip URL.shortcut' aligned with the current senji gateway stack.
 
-def _uid():
+Flow:
+  1. POST /api/convert/url  (sync — returns {markdown, title, source, media})
+  2. Parse JSON response → extract title + markdown
+  3. URL-encode both values
+  4. Open obsidian://new?vault=...&file=Clippings%2F{title}&content={markdown}&overwrite=true
+  5. Show "Saved to Obsidian ✓" notification
+
+Usage:
+    python shortcuts/senji_url.py
+    python shortcuts/senji_url.py --vault "MyVault" --token "your-token"
+"""
+
+from __future__ import annotations
+
+import argparse
+import plistlib
+import subprocess
+import uuid
+from pathlib import Path
+
+DEFAULT_ENDPOINT = "https://markdown.myloft.cloud/api/convert/url"
+DEFAULT_TOKEN = "dev-token"
+DEFAULT_VAULT = "SecondBrain"
+OUTPUT_FILE = Path(__file__).parent / "Senji \u2014 Clip URL.shortcut"
+
+_OCHAR = "\ufffc"
+
+
+def _uid() -> str:
     return str(uuid.uuid4()).upper()
 
-def _text(s):
-    return {"WFSerializationType": "WFTextSerializationObject", "string": s}
 
-def _var(name):
+def _text(s: str) -> dict:
     return {
-        "string": f"￼{name}￼",
-        "attachmentsByRange": {str(i): {"Type": "ActionOutput", "OutputName": name, "OutputUUID": _uid()} for i in range(len(name))}
+        "Value": {"string": s, "attachmentsByRange": {}},
+        "WFSerializationType": "WFTextTokenString",
     }
 
-def _bearer_token(var_name):
-    prefix = "Bearer "
-    var_part = f"￼{var_name}￼"
+
+def _share_sheet_url() -> dict:
     return {
-        "string": prefix + var_part,
-        "attachmentsByRange": {
-            str(len(prefix) + i): {"Type": "Variable", "OutputName": var_name, "OutputUUID": _uid()}
-            for i in range(len(var_name))
-        }
+        "Value": {
+            "string": _OCHAR,
+            "attachmentsByRange": {
+                "{0, 1}": {"Type": "ExtensionInput"},
+            },
+        },
+        "WFSerializationType": "WFTextTokenString",
     }
 
-def _dict_value(key, val):
-    return {"Key": key, "Value": {"string": val, "attachmentsByRange": {}}}
 
-def _ask_for_text(prompt):
+def _action_ref(output_name: str, output_uuid: str) -> dict:
     return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+        "Value": {"OutputName": output_name, "OutputUUID": output_uuid, "Type": "ActionOutput"},
+        "WFSerializationType": "WFTextTokenAttachment",
+    }
+
+
+def _action_in_text(prefix: str, output_name: str, output_uuid: str, suffix: str = "") -> dict:
+    s = prefix + _OCHAR + suffix
+    return {
+        "Value": {
+            "string": s,
+            "attachmentsByRange": {
+                f"{{{len(prefix)}, 1}}": {
+                    "OutputName": output_name,
+                    "OutputUUID": output_uuid,
+                    "Type": "ActionOutput",
+                },
+            },
+        },
+        "WFSerializationType": "WFTextTokenString",
+    }
+
+
+def _dict_value(*kv_pairs: tuple) -> dict:
+    return {
+        "Value": {
+            "WFDictionaryFieldValueItems": [
+                {"WFItemType": 0, "WFKey": _text(k), "WFValue": v} for k, v in kv_pairs
+            ]
+        },
+        "WFSerializationType": "WFDictionaryFieldValue",
+    }
+
+
+def _build_actions(endpoint: str, token: str, vault: str) -> list[dict]:
+    u_http = _uid()
+    u_dict = _uid()
+    u_title_val = _uid()
+    u_md_val = _uid()
+    u_title_text = _uid()
+    u_md_text = _uid()
+    u_enc_title = _uid()
+    u_enc_md = _uid()
+    u_url = _uid()
+
+    actions = [
+        # 1. POST /api/convert/url — synchronous, returns {markdown, title, source, media}
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+            "WFWorkflowActionParameters": {
+                "UUID": u_http,
+                "WFHTTPMethod": "POST",
+                "WFURL": endpoint,
+                "WFHTTPBodyType": "JSON",
+                "WFJSONValues": _dict_value(
+                    ("url", _share_sheet_url()),
+                ),
+                "WFHTTPHeaders": _dict_value(
+                    ("Authorization", _text(f"Bearer {token}")),
+                    ("Content-Type", _text("application/json")),
+                ),
+                "WFShowWebView": False,
+            },
+        },
+        # 2. Parse response body as JSON dictionary
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.detect.dictionary",
+            "WFWorkflowActionParameters": {
+                "UUID": u_dict,
+                "WFInput": _action_ref("Contents of URL", u_http),
+            },
+        },
+        # 3a. Extract "title" key
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+            "WFWorkflowActionParameters": {
+                "UUID": u_title_val,
+                "WFInput": _action_ref("Dictionary", u_dict),
+                "WFDictionaryKey": "title",
+            },
+        },
+        # 3b. Extract "markdown" key
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+            "WFWorkflowActionParameters": {
+                "UUID": u_md_val,
+                "WFInput": _action_ref("Dictionary", u_dict),
+                "WFDictionaryKey": "markdown",
+            },
+        },
+        # 4a. Materialise title as text → URL-encode for obsidian:// filename
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {
+                "UUID": u_title_text,
+                "WFTextActionText": _action_in_text("", "Value", u_title_val),
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.urlencode",
+            "WFWorkflowActionParameters": {
+                "UUID": u_enc_title,
+                "WFEncodeMode": "Encode",
+                "WFInput": _action_ref("Text", u_title_text),
+            },
+        },
+        # 4b. Materialise markdown as text → URL-encode for obsidian:// content
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {
+                "UUID": u_md_text,
+                "WFTextActionText": _action_in_text("", "Value", u_md_val),
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.urlencode",
+            "WFWorkflowActionParameters": {
+                "UUID": u_enc_md,
+                "WFEncodeMode": "Encode",
+                "WFInput": _action_ref("Text", u_md_text),
+            },
+        },
+    ]
+
+    # 5. Build obsidian:// URI with two embedded URL-encoded variables
+    prefix = f"obsidian://new?vault={vault}&file=Clippings%2F"
+    middle = "&content="
+    suffix = "&overwrite=true"
+    url_string = prefix + _OCHAR + middle + _OCHAR + suffix
+    enc_title_pos = len(prefix)
+    enc_md_pos = len(prefix) + 1 + len(middle)
+
+    actions.append({
+        "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
         "WFWorkflowActionParameters": {
-            "WFInputActionString": _text(prompt),
-            "WFAskActionRequestType": 0
-        }
-    }
+            "UUID": u_url,
+            "WFTextActionText": {
+                "Value": {
+                    "string": url_string,
+                    "attachmentsByRange": {
+                        f"{{{enc_title_pos}, 1}}": {
+                            "OutputName": "URL Encoded Text",
+                            "OutputUUID": u_enc_title,
+                            "Type": "ActionOutput",
+                        },
+                        f"{{{enc_md_pos}, 1}}": {
+                            "OutputName": "URL Encoded Text",
+                            "OutputUUID": u_enc_md,
+                            "Type": "ActionOutput",
+                        },
+                    },
+                },
+                "WFSerializationType": "WFTextTokenString",
+            },
+        },
+    })
 
-def _post_url(url, headers_dict, body_dict):
-    return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+    actions.append({
+        "WFWorkflowActionIdentifier": "is.workflow.actions.openurl",
         "WFWorkflowActionParameters": {
-            "WFURLActionURL": _text(url),
-            "WFHTTPMethod": 1,
-            "WFHTTPHeaders": {"Authorization": _bearer_token("API_TOKEN")},
-            "WFHTTPBodyType": "JSON",
-            "WFJSONValues": body_dict
-        }
-    }
+            "Show-WFInput": True,
+            "WFInput": _action_ref("Text", u_url),
+        },
+    })
 
-def _notification(text):
-    return {
+    # 6. Success notification
+    actions.append({
         "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
-        "WFWorkflowActionParameters": {"WFNotificationActionBody": _text(text)}
-    }
+        "WFWorkflowActionParameters": {
+            "WFNotificationActionTitle": _text("Saved to Obsidian \u2713"),
+            "WFNotificationActionBody": _action_ref("Value", u_title_val),
+            "WFNotificationActionSound": False,
+        },
+    })
 
-def _alert(title, body):
+    return actions
+
+
+def build_shortcut(endpoint: str, token: str, vault: str) -> dict:
     return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.alert",
-        "WFWorkflowActionParameters": {
-            "WFAlertActionTitle": _text(title),
-            "WFAlertActionMessage": _text(body)
-        }
+        "WFWorkflowMinimumClientVersion": 900,
+        "WFWorkflowMinimumClientVersionString": "900",
+        "WFWorkflowHasOutputFallback": False,
+        "WFWorkflowOutputContentItemClasses": ["WFStringContentItem"],
+        "WFWorkflowInputContentItemClasses": ["WFURLContentItem"],
+        "WFWorkflowIcon": {
+            "WFWorkflowIconGlyphNumber": 61440,
+            "WFWorkflowIconStartColor": 946986751,
+        },
+        "WFWorkflowImportQuestions": [],
+        "WFWorkflowTypes": ["NCWidget", "WatchKit", "ActionExtension"],
+        "WFWorkflowActions": _build_actions(endpoint, token, vault),
     }
 
-# Build shortcut
-actions = [
-    _post_url(
-        "https://markdown.myloft.cloud/api/ingest/url",
-        {"Authorization": "Bearer {API_TOKEN}"},
-        {"url": _var("Shortcut Input"), "tags": []}
-    ),
-    {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
-        "WFWorkflowActionParameters": {
-            "WFInput": _var("Status Code"),
-            "WFControlFlowCondition": 0,
-            "WFConditionalActionString": "202"
-        }
-    },
-    _notification("Queued: ￼Result￼"),
-    {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
-        "WFWorkflowActionParameters": {
-            "WFInput": _var("Status Code"),
-            "WFControlFlowCondition": 2
-        }
-    },
-    _alert("Error", "￼Result￼")
-]
 
-shortcut = {
-    "WFWorkflowHasShortcutInputVariables": True,
-    "WFWorkflowTypes": ["ActionExtension"],
-    "WFWorkflowInputContentItemClasses": ["WFURLContentItem"],
-    "WFWorkflowInputTypes": ["public.url"],
-    "ReceivesTypes": ["public.url"],
-    "ShareSheet": True,
-    "WFWorkflowActions": actions,
-    "WFWorkflowClientVersion": {"WFWorkflowMinimumClientRelease": 900, "WFWorkflowMinimumClientVersion": 900}
-}
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate Senji \u2014 Clip URL.shortcut")
+    parser.add_argument("--vault", default=DEFAULT_VAULT, metavar="NAME",
+                        help=f"Obsidian vault name in iCloud Drive (default: {DEFAULT_VAULT})")
+    parser.add_argument("--token", default=DEFAULT_TOKEN, metavar="TOKEN",
+                        help="Bearer token (default: dev-token)")
+    parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT, metavar="URL",
+                        help=f"Senji convert endpoint (default: {DEFAULT_ENDPOINT})")
+    args = parser.parse_args()
+
+    data = build_shortcut(endpoint=args.endpoint, token=args.token, vault=args.vault)
+
+    with OUTPUT_FILE.open("wb") as f:
+        plistlib.dump(data, f, fmt=plistlib.FMT_BINARY)
+
+    subprocess.run(["shortcuts", "sign", "-i", str(OUTPUT_FILE), "-o", str(OUTPUT_FILE)], check=True)
+
+    size = OUTPUT_FILE.stat().st_size
+    print(f"\u2713 {OUTPUT_FILE}  ({size:,} bytes)")
+    print(f"  vault:    iCloud Drive/Obsidian/{args.vault}/Clippings/")
+    print(f"  endpoint: {args.endpoint}")
+    print()
+    print("Import: double-click on macOS, or AirDrop to iPhone")
+
 
 if __name__ == "__main__":
-    with open("Senji — Clip URL.shortcut", "wb") as f:
-        plistlib.dump(shortcut, f)
-    print("✓ Senji — Clip URL.shortcut created")
+    main()
