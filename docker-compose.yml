@@ -50,6 +50,25 @@ services:
     mem_limit: 1g
     memswap_limit: 1g
     networks: [senji-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f obsidian > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "autoheal=true"
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=300
+    networks: [senji-net]
 
 networks:
   senji-net:
