@@ -37,21 +37,23 @@ services:
     networks: [senji-net]
 
   obsidian-remote:
-    image: ghcr.io/sytone/obsidian-remote:latest
+    image: lscr.io/linuxserver/obsidian:latest
     ports:
-      - "7899:8080"
+      - "7899:3000"
     volumes:
       - vault:/vaults
       - obsidian-config:/config
     environment:
       - PUID=1000
       - PGID=1000
+      - TZ=Asia/Tokyo
     restart: unless-stopped
-    mem_limit: 1g
-    memswap_limit: 1g
+    shm_size: "1gb"
+    mem_limit: 2g
+    memswap_limit: 2g
     networks: [senji-net]
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f obsidian > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000 >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
