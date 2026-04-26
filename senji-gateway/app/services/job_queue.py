@@ -10,6 +10,9 @@ import sqlite3
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+_JST = ZoneInfo("Asia/Tokyo")
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -265,7 +268,7 @@ class JobQueue:
             )
             return None
         wiki_fm = dict(frontmatter)
-        wiki_fm["date"] = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+        wiki_fm["date"] = datetime.now(tz=_JST).strftime("%Y-%m-%d")
         return self._vault_writer.save_wiki(slug, wiki_md, wiki_fm)
 
     async def _generate_and_save_embedding(
@@ -337,7 +340,7 @@ class JobQueue:
             markdown = extracted.get("markdown") or ""
 
             title = extracted.get("title") or "untitled"
-            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            date_str = datetime.now(tz=_JST).strftime("%Y-%m-%d")
             slug = make_slug(title, date_prefix=date_str)
             fm = {
                 "title": title,
@@ -424,7 +427,7 @@ class JobQueue:
 
             original = job.original_filename or tmp_path.name
             title = Path(original).stem or "untitled"
-            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            date_str = datetime.now(tz=_JST).strftime("%Y-%m-%d")
             slug = make_slug(title, date_prefix=date_str)
             fm = {
                 "title": title,
@@ -540,7 +543,7 @@ class JobQueue:
                 raise IngestError("Ollama VLM returned empty description")
 
             title = Path(original).stem or "untitled"
-            date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+            date_str = datetime.now(tz=_JST).strftime("%Y-%m-%d")
             slug = make_slug(title, date_prefix=date_str)
             fm = {
                 "title": title,
