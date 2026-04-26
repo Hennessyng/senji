@@ -4,6 +4,8 @@ services:
     ports:
       - "7878:8000"
     env_file: .env
+    environment:
+      - TZ=Asia/Tokyo
     volumes:
       - vault:/opt/vault
     restart: unless-stopped
