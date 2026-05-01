@@ -34,15 +34,27 @@ async def lifespan(app: FastAPI):
     app.state.vault_writer = vault_writer
     app.state.ollama_client = ollama_client
     app.state.job_queue = job_queue
+    async def _sweeper_loop() -> None:
+        while True:
+            await asyncio.sleep(60)
+            swept = job_queue.sweep_stale_jobs(timeout_minutes=15)
+            if swept:
+                import logging
+                logging.getLogger("senji.pics.sweeper").warning(
+                    "Swept stale jobs", extra={"count": swept}
+                )
+
     worker_task = asyncio.create_task(job_queue.worker())
+    sweeper_task = asyncio.create_task(_sweeper_loop())
     try:
         yield
     finally:
-        worker_task.cancel()
-        try:
-            await worker_task
-        except asyncio.CancelledError:
-            pass
+        for task in (worker_task, sweeper_task):
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(title="Senji Gateway", lifespan=lifespan)

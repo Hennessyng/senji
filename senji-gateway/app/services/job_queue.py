@@ -9,7 +9,7 @@ import shutil
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 _JST = ZoneInfo("Asia/Tokyo")
@@ -228,6 +228,27 @@ class JobQueue:
             )
             conn.commit()
         logger.info("Job completed_raw_only", extra={"job_id": job_id, "files": files})
+
+    def sweep_stale_jobs(self, timeout_minutes: int = 15) -> int:
+        cutoff = _dt_to_str(_now() - timedelta(minutes=timeout_minutes))
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT job_id FROM jobs WHERE status IN ('queued', 'processing') AND created_at < ?",
+                (cutoff,),
+            ).fetchall()
+            if not rows:
+                return 0
+            ids = [r[0] for r in rows]
+            placeholders = ",".join("?" * len(ids))
+            conn.execute(
+                f"UPDATE jobs SET status='failed', error_detail=?, completed_at=? "
+                f"WHERE job_id IN ({placeholders})",
+                [f"job timed out after {timeout_minutes}m", _dt_to_str(_now())] + ids,
+            )
+            conn.commit()
+        for job_id in ids:
+            logger.error("Job swept as stale", extra={"job_id": job_id, "timeout_minutes": timeout_minutes})
+        return len(ids)
 
     def _get_queued_jobs(self) -> list[str]:
         with self._conn() as conn:

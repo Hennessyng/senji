@@ -229,18 +229,25 @@ async function handleFileIngest() {
 function startJobPolling(jobId, token) {
   jobIdDisplay.textContent = jobId;
   showJobStatus('queued');
-  let attempts = 0;
-  const MAX = 60;
+  const TERMINAL = new Set(['completed', 'completed_raw_only', 'failed']);
+  const MAX_ERRORS = 5;
+  let consecutiveErrors = 0;
   const id = setInterval(async () => {
-    if (++attempts > MAX) { clearInterval(id); showJobStatus('timeout'); return; }
     try {
       const r = await fetch(`/api/ingest/jobs/${jobId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!r.ok) {
+        if (++consecutiveErrors >= MAX_ERRORS) { clearInterval(id); showJobStatus('timeout'); }
+        return;
+      }
+      consecutiveErrors = 0;
       const job = await parseJson(r);
       showJobStatus(job.status, job);
-      if (job.status === 'complete' || job.status === 'failed') clearInterval(id);
-    } catch { }
+      if (TERMINAL.has(job.status)) clearInterval(id);
+    } catch {
+      if (++consecutiveErrors >= MAX_ERRORS) { clearInterval(id); showJobStatus('timeout'); }
+    }
   }, 2000);
 }
 
@@ -255,11 +262,12 @@ function checkUrlJobParam() {
 }
 
 function showJobStatus(status, job = null) {
-  const icons = { queued: '⏳', processing: '⚙️', complete: '✅', failed: '❌', timeout: '⚠️' };
+  const icons = { queued: '⏳', processing: '⚙️', completed: '✅', completed_raw_only: '✅', failed: '❌', timeout: '⚠️' };
   const texts = {
     queued: 'Queued — waiting to process...',
     processing: 'Processing — converting and generating wiki...',
-    complete: `Saved to vault${job?.files_written?.length ? ' — ' + job.files_written.join(', ') : ''}`,
+    completed: `Saved to vault${job?.files_written?.length ? ' — ' + job.files_written.join(', ') : ''}`,
+    completed_raw_only: `Saved to vault (no wiki)${job?.files_written?.length ? ' — ' + job.files_written.join(', ') : ''}`,
     failed: `Failed${job?.error_detail ? ': ' + job.error_detail : ''}`,
     timeout: 'Timed out — check server logs',
   };
