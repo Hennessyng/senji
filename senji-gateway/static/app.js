@@ -254,11 +254,17 @@ function startJobPolling(jobId, token) {
 function checkUrlJobParam() {
   const params = new URLSearchParams(window.location.search);
   const jobId = params.get('job');
-  if (!jobId) return;
-  const token = ensureToken();
-  if (!token) return;
+  const clipUrl = params.get('clipurl');
   window.history.replaceState({}, '', window.location.pathname);
-  startJobPolling(jobId, token);
+  if (jobId) {
+    const token = ensureToken();
+    if (!token) return;
+    startJobPolling(jobId, token);
+  } else if (clipUrl) {
+    tabs[0].click();
+    urlInput.value = decodeURIComponent(clipUrl);
+    handleUrlIngest();
+  }
 }
 
 function showJobStatus(status, job = null) {
