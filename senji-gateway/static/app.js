@@ -262,7 +262,9 @@ function checkUrlJobParam() {
     startJobPolling(jobId, token);
   } else if (clipUrl) {
     tabs[0].click();
-    urlInput.value = decodeURIComponent(clipUrl);
+    let decodedUrl = clipUrl;
+    try { decodedUrl = decodeURIComponent(clipUrl); } catch (_) {}
+    urlInput.value = decodedUrl;
     handleUrlIngest();
   }
 }
