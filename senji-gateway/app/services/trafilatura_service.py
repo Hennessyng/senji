@@ -17,6 +17,9 @@ def extract_article(html: str, source_url: str) -> dict:
             html,
             output_format="markdown",
             include_comments=False,
+            include_images=True,
+            include_tables=True,
+            include_formatting=True,
         )
         if not doc:
             raise ValueError("Trafilatura returned empty extraction")
