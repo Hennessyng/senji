@@ -374,7 +374,6 @@ class JobQueue:
                 "description": extracted.get("description"),
             }
             path = self._vault_writer.save_raw(slug, markdown, fm)
-            await self._generate_and_save_embedding(path, markdown, fm)
             wiki_attempted = self._ollama_client is not None
             wiki_path = await self._generate_and_save_wiki(
                 slug=slug,
@@ -402,6 +401,7 @@ class JobQueue:
                     "wiki_path": str(wiki_path) if wiki_path else None,
                 },
             )
+            asyncio.create_task(self._generate_and_save_embedding(path, markdown, fm))
             if self._embedding_service:
                 try:
                     markdown_text = path.read_text(errors="replace").split("\n---\n", 1)[-1]
@@ -459,7 +459,6 @@ class JobQueue:
                 "pages": page_count,
             }
             path = self._vault_writer.save_raw(slug, markdown, fm)
-            await self._generate_and_save_embedding(path, markdown, fm)
             wiki_attempted = self._ollama_client is not None
             wiki_path = await self._generate_and_save_wiki(
                 slug=slug,
@@ -478,6 +477,7 @@ class JobQueue:
             else:
                 append_to_log(vault_path, job_id, slug, "pdf", "completed", "")
                 self.mark_completed(job_id, files_written=files_written)
+            asyncio.create_task(self._generate_and_save_embedding(path, markdown, fm))
             ingest_file_logger.info(
                 "PDF ingest complete",
                 extra={
