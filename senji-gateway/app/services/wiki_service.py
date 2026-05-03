@@ -57,7 +57,7 @@ async def generate_wiki_entry(
     user_msg = prompt_template.format(
         title=title,
         source=source,
-        content=content,
+        content=content[:8000],
         language=language,
     )
 
