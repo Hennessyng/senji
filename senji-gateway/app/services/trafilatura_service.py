@@ -1,9 +1,16 @@
 import logging
+import re
 
 import trafilatura
 from trafilatura.metadata import extract_metadata
 
 logger = logging.getLogger("senji.services.trafilatura")
+
+_LAZY_ATTRS = re.compile(r'\bdata-(?:lazy-)?src\s*=\s*"(https?://[^"]+)"')
+
+
+def _promote_lazy_images(html: str) -> str:
+    return _LAZY_ATTRS.sub(lambda m: f'src="{m.group(1)}"', html)
 
 
 def extract_article(html: str, source_url: str) -> dict:
@@ -13,6 +20,7 @@ def extract_article(html: str, source_url: str) -> dict:
     Raises ValueError if extraction fails.
     """
     try:
+        html = _promote_lazy_images(html)
         doc = trafilatura.extract(
             html,
             output_format="markdown",
