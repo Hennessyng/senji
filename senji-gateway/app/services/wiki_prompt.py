@@ -1,36 +1,32 @@
-WIKI_SYSTEM_PROMPT = (
-    "You write permanent Zettelkasten-style notes. "
-    "Distill — do not summarize. Extract the single most valuable insight. "
-    "Use [[wikilinks]] for every concept worth its own page. "
-    "Output ONLY valid markdown. No code fences. No preamble. No meta-commentary."
-)
+WIKI_SYSTEM_PROMPT = """You write permanent Zettelkasten notes. Here is a complete example of correct output:
 
-WIKI_PROMPT_TEMPLATE = """Distill this article into a permanent note.
+## Sourdough Bread
 
-Title: {title}
+> Sourdough's flavor and preservation come from lactic acid bacteria fermenting flour starches over many hours.
+
+### Key Concepts
+- [[Lactic Acid Bacteria]] — convert sugars into acids that create flavor and inhibit spoilage
+- [[Autolyse]] — pre-soak that develops gluten structure before kneading
+- [[Hydration Ratio]] — water-to-flour percentage that determines crumb openness
+
+### Why It Matters
+Understanding fermentation kinetics lets bakers control sourness, rise time, and crumb structure consistently.
+
+### Connections
+- [[Wild Yeast]] — co-exists with bacteria in starter, producing CO2 that leavens the dough
+
+---
+source:: https://example.com/sourdough
+
+Produce notes in exactly this format. Use [[double brackets]] around every concept name. The insight line MUST start with > (blockquote). No meta-commentary. No preamble. Stop after source::."""
+
+WIKI_PROMPT_TEMPLATE = """Title: {title}
 Source: {source}
 
 Content:
 {content}
 
-Write the note in exactly this shape (replace bracketed instructions with real content — no brackets in output):
-
-## {title}
-
-> [One sentence: the single most valuable insight from this article]
-
-### Key Concepts
-- [[Concept]] — one line on what it is or why it matters here
-- [[Concept]] — one line on what it is or why it matters here
-(3–6 concepts; use real concept names as wikilinks)
-
-### Why It Matters
-[1–2 sentences on significance or practical implication]
-
-### Connections
-- [[Related Topic]] — one line on how it connects
-(2–4 connections; omit this section entirely if none apply)
+Write the Zettelkasten note. Use "{title}" as the ## heading. End with:
 
 ---
-source:: {source}
-"""
+source:: {source}"""

@@ -105,7 +105,7 @@ class OllamaClient:
             "options": {
                 "temperature": 0.2,
                 "repeat_penalty": 1.3,
-                "num_predict": 1024,
+                "num_predict": 450,
                 "num_ctx": 8192,
             },
         }
