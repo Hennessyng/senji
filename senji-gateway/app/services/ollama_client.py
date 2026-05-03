@@ -76,6 +76,20 @@ class OllamaClient:
                     chunks.append(chunk)
         return "".join(chunks)
 
+    async def _stream_chat(self, payload: dict) -> str:
+        chunks: list[str] = []
+        async with httpx.AsyncClient(timeout=_GENERATE_TIMEOUT) as client, client.stream(
+            "POST", f"{self.base_url}/api/chat", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                if chunk := (data.get("message") or {}).get("content"):
+                    chunks.append(chunk)
+        return "".join(chunks)
+
     async def generate(
         self, system_prompt: str, user_msg: str, model: str = "qwen3:8b"
     ) -> str:
@@ -83,8 +97,10 @@ class OllamaClient:
             raise OllamaUnavailableError("Ollama is marked unavailable")
         payload = {
             "model": model,
-            "system": system_prompt,
-            "prompt": user_msg,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_msg},
+            ],
             "stream": True,
             "options": {
                 "temperature": 0.2,
@@ -96,7 +112,7 @@ class OllamaClient:
         async with self._semaphore:
             start = time.monotonic()
             try:
-                result = await self._stream_generate(payload)
+                result = await self._stream_chat(payload)
             except httpx.ConnectError as exc:
                 self.available = False
                 logger.error(
