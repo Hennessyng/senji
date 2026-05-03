@@ -86,6 +86,12 @@ class OllamaClient:
             "system": system_prompt,
             "prompt": user_msg,
             "stream": True,
+            "options": {
+                "temperature": 0.2,
+                "repeat_penalty": 1.3,
+                "num_predict": 1024,
+                "num_ctx": 8192,
+            },
         }
         async with self._semaphore:
             start = time.monotonic()
