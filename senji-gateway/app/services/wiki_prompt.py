@@ -1,29 +1,36 @@
 WIKI_SYSTEM_PROMPT = (
-    "You are a wiki curator. Output ONLY valid markdown. "
-    "Do not wrap your output in triple backticks. "
-    "Do not add explanations, apologies, or meta commentary."
+    "You write permanent Zettelkasten-style notes. "
+    "Distill — do not summarize. Extract the single most valuable insight. "
+    "Use [[wikilinks]] for every concept worth its own page. "
+    "Output ONLY valid markdown. No code fences. No preamble. No meta-commentary."
 )
 
-WIKI_PROMPT_TEMPLATE = """You are a wiki curator. Summarise the following article into a structured wiki entry.
+WIKI_PROMPT_TEMPLATE = """Distill this article into a permanent note.
 
 Title: {title}
 Source: {source}
-Language: {language}
 
 Content:
 {content}
 
-Produce the output in this exact markdown shape (no code fences, no preamble):
+Write the note in exactly this shape (replace bracketed instructions with real content — no brackets in output):
 
-## Summary
-[2-3 paragraph summary of the article in plain prose]
+## {title}
 
-## Key Concepts
-- [concept 1 — one-line definition]
-- [concept 2 — one-line definition]
-- [concept 3 — one-line definition]
+> [One sentence: the single most valuable insight from this article]
 
-## Related
-[[concept-link-1]]
-[[concept-link-2]]
+### Key Concepts
+- [[Concept]] — one line on what it is or why it matters here
+- [[Concept]] — one line on what it is or why it matters here
+(3–6 concepts; use real concept names as wikilinks)
+
+### Why It Matters
+[1–2 sentences on significance or practical implication]
+
+### Connections
+- [[Related Topic]] — one line on how it connects
+(2–4 connections; omit this section entirely if none apply)
+
+---
+source:: {source}
 """

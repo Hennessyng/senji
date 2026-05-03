@@ -13,6 +13,12 @@ logger = logging.getLogger("senji.pics.wiki_service")
 
 _FENCE_OPEN_RE = re.compile(r"^\s*```[a-zA-Z0-9_-]*\s*\n")
 _FENCE_CLOSE_RE = re.compile(r"\n```\s*$")
+# qwen3 emits <think>...</think> reasoning blocks before the actual response
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def _strip_think_blocks(text: str) -> str:
+    return _THINK_RE.sub("", text).strip()
 
 
 def _strip_code_fences(text: str) -> str:
@@ -81,7 +87,7 @@ async def generate_wiki_entry(
         )
         raise WikiError("Wiki generation failed", detail=str(exc)) from exc
 
-    cleaned = _strip_code_fences(raw or "")
+    cleaned = _strip_code_fences(_strip_think_blocks(raw or ""))
     if not cleaned:
         logger.warning(
             "LLM returned empty wiki body — using raw fallback",
