@@ -36,7 +36,8 @@ source:: https://example.com/sourdough
 
 Produce notes in exactly this format. Use [[double brackets]] around every concept name. The insight line MUST start with > (blockquote). No meta-commentary. No preamble. Stop after source::."""
 
-WIKI_PROMPT_TEMPLATE = """Title: {title}
+WIKI_PROMPT_TEMPLATE = """/no_think
+Title: {title}
 Source: {source}
 
 Content:
@@ -107,8 +108,9 @@ def ollama_chat(base_url: str, model: str, system: str, user: str) -> str:
         "options": {
             "temperature": 0.2,
             "repeat_penalty": 1.3,
-            "num_predict": 450,
+            "num_predict": 2048,
             "num_ctx": 8192,
+            "think": False,
         },
     }).encode()
 

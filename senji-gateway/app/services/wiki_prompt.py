@@ -20,7 +20,8 @@ source:: https://example.com/sourdough
 
 Produce notes in exactly this format. Use [[double brackets]] around every concept name. The insight line MUST start with > (blockquote). No meta-commentary. No preamble. Stop after source::."""
 
-WIKI_PROMPT_TEMPLATE = """Title: {title}
+WIKI_PROMPT_TEMPLATE = """/no_think
+Title: {title}
 Source: {source}
 
 Content:

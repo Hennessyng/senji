@@ -105,8 +105,9 @@ class OllamaClient:
             "options": {
                 "temperature": 0.2,
                 "repeat_penalty": 1.3,
-                "num_predict": 450,
+                "num_predict": 2048,
                 "num_ctx": 8192,
+                "think": False,
             },
         }
         async with self._semaphore:
