@@ -5,6 +5,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.api.health import router as health_router
 from app.config import settings
@@ -16,6 +18,16 @@ from app.routes.ingest import router as ingest_router
 from app.services.job_queue import JobQueue
 from app.services.ollama_client import OllamaClient
 from app.services.vault_writer import VaultWriter
+
+_NO_CACHE_PATHS = {"/app.js", "/style.css"}
+
+
+class _NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path in _NO_CACHE_PATHS:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 @asynccontextmanager
@@ -59,6 +71,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Senji Gateway", lifespan=lifespan)
 app.state.settings = settings
+app.add_middleware(_NoCacheStaticMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(BearerAuthMiddleware, token=settings.senji_token)
 app.add_middleware(
