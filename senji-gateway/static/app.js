@@ -36,23 +36,66 @@ let currentMarkdown = "";
 let currentTitle = "markdown-result";
 let authToken = readToken();
 
-if (!authToken) {
-  const promptedToken = window.prompt("Enter your Senji bearer token:");
-  if (promptedToken && promptedToken.trim()) {
-    authToken = promptedToken.trim();
-    localStorage.setItem(TOKEN_KEY, authToken);
-  }
-} else {
-  localStorage.setItem(TOKEN_KEY, authToken);
-}
-
 initializeTheme();
 initializeTabs();
 initializeResultsActions();
+initializeTokenModal();
+initializeBookmarklet();
 urlConvertButton.addEventListener("click", handleUrlConvert);
 urlIngestBtn.addEventListener('click', handleUrlIngest);
 uploadIngestBtn.addEventListener('click', handleFileIngest);
 checkUrlJobParam();
+
+// --- Token Modal ---
+
+let _tokenModalResolve = null;
+
+function initializeTokenModal() {
+  const submitBtn = document.getElementById('token-modal-submit');
+  const input = document.getElementById('token-modal-input');
+
+  function submitToken() {
+    const val = input.value.trim();
+    if (!val) return;
+    authToken = val;
+    localStorage.setItem(TOKEN_KEY, authToken);
+    hideTokenModal();
+    if (_tokenModalResolve) {
+      _tokenModalResolve(authToken);
+      _tokenModalResolve = null;
+    }
+  }
+
+  submitBtn.addEventListener('click', submitToken);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitToken(); });
+}
+
+function showTokenModal() {
+  return new Promise((resolve) => {
+    _tokenModalResolve = resolve;
+    const modal = document.getElementById('token-modal');
+    const input = document.getElementById('token-modal-input');
+    modal.style.display = 'flex';
+    input.value = '';
+    setTimeout(() => input.focus(), 50);
+  });
+}
+
+function hideTokenModal() {
+  document.getElementById('token-modal').style.display = 'none';
+}
+
+// --- Bookmarklet ---
+
+function initializeBookmarklet() {
+  const url = `javascript:void(location.href='${window.location.origin}/?clipurl='+encodeURIComponent(location.href))`;
+  const display = document.getElementById('bookmarklet-url');
+  const copyBtn = document.getElementById('copy-bookmarklet-btn');
+  if (display) display.textContent = url;
+  if (copyBtn) copyBtn.addEventListener('click', () => copyToClipboard(url));
+}
+
+// --- Theme ---
 
 function initializeTheme() {
   const storedTheme = localStorage.getItem(THEME_KEY);
@@ -76,6 +119,8 @@ function applyTheme(theme) {
   );
 }
 
+// --- Tabs ---
+
 function initializeTabs() {
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => setActiveTab(tab.id));
@@ -90,14 +135,13 @@ function setActiveTab(activeId) {
   });
 }
 
+// --- Results Actions ---
+
 function initializeResultsActions() {
   copyButton.addEventListener("click", async () => {
-    if (!currentMarkdown) {
-      return;
-    }
-
+    if (!currentMarkdown) return;
     try {
-      await navigator.clipboard.writeText(currentMarkdown);
+      await copyToClipboard(currentMarkdown);
       hideError();
     } catch (error) {
       showError(readErrorMessage(error, "Clipboard write failed."));
@@ -105,19 +149,45 @@ function initializeResultsActions() {
   });
 
   downloadButton.addEventListener("click", () => {
-    if (!currentMarkdown) {
-      return;
-    }
-
-    const blob = new Blob([currentMarkdown], { type: "text/markdown;charset=utf-8" });
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = `${slugify(currentTitle || "senji-export")}.md`;
-    anchor.click();
-    URL.revokeObjectURL(objectUrl);
+    if (!currentMarkdown) return;
+    downloadMarkdown(currentMarkdown, currentTitle);
   });
 }
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (_) {}
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+}
+
+function downloadMarkdown(markdown, title) {
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  const objectUrl = URL.createObjectURL(blob);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS) {
+    window.open(objectUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+  } else {
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = `${slugify(title || "senji-export")}.md`;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+// --- URL Convert ---
 
 async function handleUrlConvert() {
   hideError();
@@ -129,7 +199,7 @@ async function handleUrlConvert() {
     return;
   }
 
-  const token = ensureToken();
+  const token = await ensureToken();
   if (!token) {
     showError("Bearer token required to call Senji API.");
     return;
@@ -180,11 +250,13 @@ function setLoadingState(isLoading) {
   urlConvertButton.textContent = isLoading ? "Converting" : "Convert";
 }
 
+// --- URL Ingest ---
+
 async function handleUrlIngest() {
   hideError();
   const url = urlInput.value.trim();
   if (!url) { showError('Enter a URL before saving.'); urlInput.focus(); return; }
-  const token = ensureToken();
+  const token = await ensureToken();
   if (!token) { showError('Bearer token required.'); return; }
   urlIngestBtn.disabled = true;
   try {
@@ -203,9 +275,11 @@ async function handleUrlIngest() {
   }
 }
 
+// --- File Ingest ---
+
 async function handleFileIngest() {
   if (!selectedFile) return;
-  const token = ensureToken();
+  const token = await ensureToken();
   if (!token) { showError('Bearer token required.'); return; }
   uploadIngestBtn.disabled = true;
   try {
@@ -225,6 +299,8 @@ async function handleFileIngest() {
     uploadIngestBtn.disabled = false;
   }
 }
+
+// --- Job Polling ---
 
 function startJobPolling(jobId, token) {
   jobIdDisplay.textContent = jobId;
@@ -251,13 +327,15 @@ function startJobPolling(jobId, token) {
   }, 2000);
 }
 
-function checkUrlJobParam() {
+// --- URL/Job Param Check (bookmarklet entry point) ---
+
+async function checkUrlJobParam() {
   const params = new URLSearchParams(window.location.search);
   const jobId = params.get('job');
   const clipUrl = params.get('clipurl');
   window.history.replaceState({}, '', window.location.pathname);
   if (jobId) {
-    const token = ensureToken();
+    const token = await ensureToken();
     if (!token) return;
     startJobPolling(jobId, token);
   } else if (clipUrl) {
@@ -265,9 +343,11 @@ function checkUrlJobParam() {
     let decodedUrl = clipUrl;
     try { decodedUrl = decodeURIComponent(clipUrl); } catch (_) {}
     urlInput.value = decodedUrl;
-    handleUrlIngest();
+    await handleUrlIngest();
   }
 }
+
+// --- Job Status Display ---
 
 function showJobStatus(status, job = null) {
   const icons = { queued: '⏳', processing: '⚙️', completed: '✅', completed_raw_only: '✅', failed: '❌', timeout: '⚠️' };
@@ -285,6 +365,8 @@ function showJobStatus(status, job = null) {
   jobStatusSection.style.display = 'block';
 }
 
+// --- Error Display ---
+
 function showError(message) {
   errorMessage.textContent = message;
   errorBanner.style.display = "block";
@@ -295,19 +377,11 @@ function hideError() {
   errorMessage.textContent = "";
 }
 
-function ensureToken() {
-  if (authToken) {
-    return authToken;
-  }
+// --- Token Management ---
 
-  const promptedToken = window.prompt("Enter your Senji bearer token:");
-  if (!promptedToken || !promptedToken.trim()) {
-    return "";
-  }
-
-  authToken = promptedToken.trim();
-  localStorage.setItem(TOKEN_KEY, authToken);
-  return authToken;
+async function ensureToken() {
+  if (authToken) return authToken;
+  return await showTokenModal();
 }
 
 function readToken() {
@@ -333,6 +407,8 @@ function readToken() {
   const [, tokenValue = ""] = tokenCookie.split("=");
   return decodeURIComponent(tokenValue).trim();
 }
+
+// --- Helpers ---
 
 async function parseJson(response) {
   try {
@@ -430,7 +506,7 @@ function setSelectedFile(file) {
 
 async function handleFileConvert() {
   if (!selectedFile) return;
-  const token = ensureToken();
+  const token = await ensureToken();
   if (!token) {
     showError("Bearer token required to call Senji API.");
     return;
@@ -468,7 +544,7 @@ async function handlePasteConvert() {
     pasteInput.focus();
     return;
   }
-  const token = ensureToken();
+  const token = await ensureToken();
   if (!token) {
     showError("Bearer token required to call Senji API.");
     return;
@@ -495,7 +571,6 @@ async function handlePasteConvert() {
 
 // --- Clear Button ---
 const resultsArea = document.getElementById("results-area");
-const resultsContent = document.getElementById("results-content");
 const clearButton = document.getElementById("clear-btn");
 
 clearButton.addEventListener("click", clearAll);
@@ -518,7 +593,7 @@ function clearAll() {
   hideError();
 }
 
-// --- Keyboard shortcut: Cmd/Ctrl+Enter to submit active tab ---
+// --- Keyboard shortcut: Cmd/Ctrl+Enter ---
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   if (!(e.metaKey || e.ctrlKey)) return;
@@ -529,7 +604,7 @@ document.addEventListener("keydown", (e) => {
   else if (activeTab.id === "upload-tab" && selectedFile) fileConvertBtn.click();
 });
 
-// --- Focus management: auto-focus on tab switch ---
+// --- Focus management ---
 document.querySelectorAll(".tab-button").forEach((tab) => {
   tab.addEventListener("click", () => {
     if (tab.id === "url-tab") setTimeout(() => urlInput.focus(), 10);

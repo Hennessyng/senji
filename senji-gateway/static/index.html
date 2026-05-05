@@ -9,6 +9,76 @@
     <meta name="senji-token" id="senji-token" content="" />
     <title>Senji — Content Conversion Dashboard</title>
     <link rel="stylesheet" href="/style.css" />
+    <style>
+        .token-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+        }
+        .token-modal-box {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 28px 24px;
+            max-width: 380px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        [data-theme="dark"] .token-modal-box {
+            background: #1e1e2e;
+            color: #cdd6f4;
+        }
+        .token-modal-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .token-modal-hint {
+            margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        .bookmarklet-setup {
+            margin-top: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(128,128,128,0.2);
+            padding: 0 12px;
+        }
+        .bookmarklet-setup summary {
+            padding: 10px 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+        .bookmarklet-content {
+            padding-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .bookmarklet-url-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .bookmarklet-url {
+            flex: 1;
+            font-size: 0.75rem;
+            word-break: break-all;
+            background: rgba(128,128,128,0.1);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -131,6 +201,18 @@
                 </div>
             </div>
 
+            <!-- Bookmarklet Setup -->
+            <details class="bookmarklet-setup">
+                <summary>Bookmarklet setup</summary>
+                <div class="bookmarklet-content">
+                    <p class="input-help">iOS: Share &rarr; Add Bookmark &rarr; edit the saved URL to this value. macOS: drag to bookmarks bar.</p>
+                    <div class="bookmarklet-url-row">
+                        <code id="bookmarklet-url" class="bookmarklet-url"></code>
+                        <button class="button button--secondary" id="copy-bookmarklet-btn">Copy</button>
+                    </div>
+                </div>
+            </details>
+
             <!-- Job Status -->
             <div id="job-status" class="job-status" style="display: none" role="status" aria-live="polite">
                 <div class="job-status-header">
@@ -165,6 +247,23 @@
                 <div id="result-metadata" class="result-metadata"></div>
             </div>
         </main>
+    </div>
+
+    <!-- Token Modal -->
+    <div id="token-modal" class="token-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="token-modal-title" style="display:none">
+        <div class="token-modal-box">
+            <h2 class="token-modal-title" id="token-modal-title">Bearer Token Required</h2>
+            <p class="token-modal-hint">Enter your Senji token to authenticate. It will be saved in your browser.</p>
+            <input
+                type="password"
+                id="token-modal-input"
+                class="input-field"
+                placeholder="Paste token here"
+                autocomplete="current-password"
+                aria-label="Bearer token"
+            />
+            <button class="button button--primary" id="token-modal-submit">Save &amp; Continue</button>
+        </div>
     </div>
 
     <script src="/app.js"></script>
