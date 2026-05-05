@@ -90,6 +90,28 @@ class EmbeddingService:
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+
+        # Use Ollama embeddings when configured (avoids HuggingFace download)
+        if settings.ollama_base_url:
+            try:
+                import httpx as _httpx  # noqa: PLC0415
+                async with _httpx.AsyncClient(timeout=120.0) as client:
+                    vectors: list[list[float]] = []
+                    for text in texts:
+                        resp = await client.post(
+                            f"{settings.ollama_base_url}/api/embeddings",
+                            json={"model": settings.ollama_embed_model, "prompt": text},
+                        )
+                        resp.raise_for_status()
+                        vectors.append(resp.json()["embedding"])
+                    return vectors
+            except Exception as exc:
+                logger.warning(
+                    "Ollama embedding failed, falling back to sentence-transformers",
+                    extra={"error": str(exc)},
+                )
+
+        # Fallback: local sentence_transformers model
         model = self._get_model()
         batch_size = settings.embedding_batch_size
 
