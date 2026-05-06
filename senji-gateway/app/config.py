@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-m3"
     embedding_batch_size: int = 32
     max_file_size_mb: int = 50
+    asset_timeout_seconds: int = 60
+    asset_concurrency: int = 4
+    asset_retry_count: int = 2
 
 
 settings = Settings()

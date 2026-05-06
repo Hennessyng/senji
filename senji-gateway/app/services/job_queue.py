@@ -22,6 +22,7 @@ import pymupdf4llm
 
 from app.config import settings
 from app.errors import IngestError, OllamaUnavailableError, WikiError
+from app.services.asset_downloader import localize_assets
 from app.services.embedding_service import EmbeddingService
 from app.services.index_service import append_to_index, append_to_log
 from app.services.readability_client import convert_html as readability_convert
@@ -265,6 +266,7 @@ class JobQueue:
         content: str,
         frontmatter: dict,
         language: str = "en",
+        asset_cache: dict[str, str] | None = None,
     ) -> Path | None:
         if self._ollama_client is None or self._vault_writer is None:
             return None
@@ -288,6 +290,16 @@ class JobQueue:
                 extra={"slug": slug, "source": source, "error_msg": str(exc)},
             )
             return None
+        if asset_cache is not None and self._vault_writer is not None:
+            try:
+                wiki_md, _ = await localize_assets(
+                    wiki_md, slug, self._vault_writer._root, cache=asset_cache,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Wiki asset localization failed — saving with remote URLs",
+                    extra={"slug": slug, "error": str(exc)},
+                )
         wiki_fm = dict(frontmatter)
         wiki_fm["date"] = datetime.now(tz=_JST).strftime("%Y-%m-%d")
         return self._vault_writer.save_wiki(slug, wiki_md, wiki_fm)
@@ -373,7 +385,18 @@ class JobQueue:
                 "author": extracted.get("author"),
                 "description": extracted.get("description"),
             }
-            path = self._vault_writer.save_raw(slug, markdown, fm)
+            asset_cache: dict[str, str] = {}
+            try:
+                markdown_localized, _ = await localize_assets(
+                    markdown, slug, self._vault_writer._root, cache=asset_cache,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Raw asset localization failed — saving with remote URLs",
+                    extra={"slug": slug, "error": str(exc)},
+                )
+                markdown_localized = markdown
+            path = self._vault_writer.save_raw(slug, markdown_localized, fm)
             wiki_attempted = self._ollama_client is not None
             wiki_path = await self._generate_and_save_wiki(
                 slug=slug,
@@ -382,6 +405,7 @@ class JobQueue:
                 content=markdown,
                 frontmatter=fm,
                 language=extracted.get("language") or "en",
+                asset_cache=asset_cache,
             )
             vault_path = str(self._vault_writer._root)
             append_to_index(vault_path, job_id, slug, title, "url")
@@ -401,7 +425,7 @@ class JobQueue:
                     "wiki_path": str(wiki_path) if wiki_path else None,
                 },
             )
-            asyncio.create_task(self._generate_and_save_embedding(path, markdown, fm))
+            asyncio.create_task(self._generate_and_save_embedding(path, markdown_localized, fm))
             if self._embedding_service:
                 try:
                     markdown_text = path.read_text(errors="replace").split("\n---\n", 1)[-1]
@@ -458,7 +482,18 @@ class JobQueue:
                 "tags": job.tags,
                 "pages": page_count,
             }
-            path = self._vault_writer.save_raw(slug, markdown, fm)
+            asset_cache: dict[str, str] = {}
+            try:
+                markdown_localized, _ = await localize_assets(
+                    markdown, slug, self._vault_writer._root, cache=asset_cache,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Raw asset localization failed — saving with remote URLs",
+                    extra={"slug": slug, "error": str(exc)},
+                )
+                markdown_localized = markdown
+            path = self._vault_writer.save_raw(slug, markdown_localized, fm)
             wiki_attempted = self._ollama_client is not None
             wiki_path = await self._generate_and_save_wiki(
                 slug=slug,
@@ -467,6 +502,7 @@ class JobQueue:
                 content=markdown,
                 frontmatter=fm,
                 language="en",
+                asset_cache=asset_cache,
             )
             vault_path = str(self._vault_writer._root)
             append_to_index(vault_path, job_id, slug, title, "pdf")
@@ -477,7 +513,7 @@ class JobQueue:
             else:
                 append_to_log(vault_path, job_id, slug, "pdf", "completed", "")
                 self.mark_completed(job_id, files_written=files_written)
-            asyncio.create_task(self._generate_and_save_embedding(path, markdown, fm))
+            asyncio.create_task(self._generate_and_save_embedding(path, markdown_localized, fm))
             ingest_file_logger.info(
                 "PDF ingest complete",
                 extra={
