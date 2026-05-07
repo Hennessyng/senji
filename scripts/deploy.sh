@@ -22,7 +22,7 @@ sed "s/REPLACE_WITH_YOUR_WEBHOOK_SECRET/$WEBHOOK_SECRET/" \
 log "Generated live hooks.json"
 
 log "Rebuilding gateway and readability"
-docker compose up -d --build gateway readability
+docker compose up -d --build --force-recreate gateway readability
 
 log "Ensuring obsidian-remote is running"
 docker compose up -d obsidian-remote
@@ -57,6 +57,6 @@ if python3 "$REPO/tests/agentic_self_test.py" >> "$LOG" 2>&1; then
 else
     log "ERROR: Self-test failed — rolling back"
     git stash 2>/dev/null || true
-    docker compose up -d --build gateway readability
+    docker compose up -d --build --force-recreate gateway readability
     exit 1
 fi
