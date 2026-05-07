@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+httpx
+python-multipart
+pydantic-settings[yaml]>=2.6
+python-slugify
+unidecode
+trafilatura
+pymupdf
+pymupdf4llm
+sentence-transformers
+aiosqlite

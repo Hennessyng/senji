@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     async def _sweeper_loop() -> None:
         while True:
             await asyncio.sleep(60)
-            swept = job_queue.sweep_stale_jobs(timeout_minutes=15)
+            swept = job_queue.sweep_stale_jobs(timeout_minutes=settings.stale_job_timeout_minutes)
             if swept:
                 import logging
                 logging.getLogger("senji.pics.sweeper").warning(

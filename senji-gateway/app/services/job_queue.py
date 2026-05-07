@@ -51,7 +51,6 @@ logger = logging.getLogger("senji.pics.job_queue")
 ingest_logger = logging.getLogger("senji.pics.ingest_url")
 ingest_file_logger = logging.getLogger("senji.pics.ingest_file")
 
-_FETCH_TIMEOUT_SECONDS = 10.0
 _FETCH_RETRIES = 3
 _USER_AGENT = "Mozilla/5.0 (compatible; Senji/1.0)"
 
@@ -323,7 +322,7 @@ class JobQueue:
         for attempt in range(_FETCH_RETRIES):
             try:
                 async with httpx.AsyncClient(
-                    timeout=_FETCH_TIMEOUT_SECONDS,
+                    timeout=settings.job_fetch_timeout_seconds,
                     follow_redirects=True,
                     headers={"User-Agent": _USER_AGENT},
                 ) as client:

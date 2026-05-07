@@ -1,10 +1,10 @@
 const express = require('express');
 const { convert } = require('./converter');
+const config = require('./config');
 
 const app = express();
-const PORT = 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: config.body_size_limit }));
 
 /**
  * Health check endpoint.
@@ -31,7 +31,7 @@ app.post('/convert', (req, res) => {
   return res.json(result);
 });
 
-app.listen(PORT, () => {
+app.listen(config.port, () => {
   console.log(
     JSON.stringify({
       level: 'INFO',

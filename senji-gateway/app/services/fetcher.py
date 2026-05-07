@@ -3,10 +3,11 @@ from dataclasses import dataclass
 
 import httpx
 
+from app.config import settings
+
 logger = logging.getLogger("senji.fetcher")
 
 _USER_AGENT = "Mozilla/5.0 (compatible; Senji/1.0)"
-_TIMEOUT = 30.0
 
 
 @dataclass
@@ -21,7 +22,7 @@ async def fetch_url(url: str) -> FetchResult:
     logger.info("Fetching URL: %s", url)
     async with httpx.AsyncClient(
         follow_redirects=True,
-        timeout=_TIMEOUT,
+        timeout=settings.fetcher_timeout_seconds,
         headers={"User-Agent": _USER_AGENT},
     ) as client:
         response = await client.get(url)

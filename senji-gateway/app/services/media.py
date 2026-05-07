@@ -7,13 +7,13 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.config import settings
 from app.models.schemas import MediaItem
 
 logger = logging.getLogger("senji.media")
 
 MAX_IMAGES = 50
 MIN_SIZE_BYTES = 10_000
-DOWNLOAD_TIMEOUT = 15.0
 
 _IMG_PATTERN = re.compile(
     r'<img[^>]*(?:src|data-src)=["\']([^"\']+)["\'][^>]*/?>', re.IGNORECASE
@@ -73,7 +73,7 @@ async def _download_one(
     client: httpx.AsyncClient, url: str, index: int
 ) -> MediaItem | None:
     try:
-        resp = await client.get(url, timeout=DOWNLOAD_TIMEOUT)
+        resp = await client.get(url, timeout=settings.media_download_timeout_seconds)
         resp.raise_for_status()
     except Exception:
         logger.warning("Failed to download image: %s", url)

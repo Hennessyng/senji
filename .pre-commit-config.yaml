@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.11
+    hooks:
+      - id: pip-compile
+        name: pip-compile senji-gateway runtime
+        args:
+          - --generate-hashes
+          - --quiet
+          - --python-platform
+          - x86_64-unknown-linux-gnu
+          - --python-version
+          - "3.12"
+          - senji-gateway/requirements.in
+          - -o
+          - senji-gateway/requirements.txt
+        files: ^senji-gateway/(requirements\.(in|txt)|pyproject\.toml)$
+      - id: pip-compile
+        name: pip-compile senji-gateway dev
+        args:
+          - --generate-hashes
+          - --quiet
+          - --python-platform
+          - x86_64-unknown-linux-gnu
+          - --python-version
+          - "3.12"
+          - senji-gateway/requirements-dev.in
+          - -o
+          - senji-gateway/requirements-dev.txt
+        files: ^senji-gateway/(requirements(-dev)?\.(in|txt))$

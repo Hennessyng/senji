@@ -3,9 +3,9 @@ from dataclasses import dataclass
 
 import httpx
 
-logger = logging.getLogger("senji.readability")
+from app.config import settings
 
-_TIMEOUT = 30.0
+logger = logging.getLogger("senji.readability")
 
 
 @dataclass
@@ -17,7 +17,7 @@ class ReadabilityResult:
 async def convert_html(readability_url: str, html: str) -> ReadabilityResult:
     """POST HTML to Readability sidecar, return markdown + title."""
     logger.info("Sending HTML to Readability at %s", readability_url)
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=settings.readability_timeout_seconds) as client:
         response = await client.post(
             f"{readability_url}/convert",
             json={"html": html},

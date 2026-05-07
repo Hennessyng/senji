@@ -1,0 +1,73 @@
+# Secrets stay in .env — never commit them here.
+
+gateway:
+  readability_url: "http://readability:3000"
+  ollama_base_url: "http://10.1.1.222:11434"
+
+  # Storage
+  vault_path: "/opt/vault"
+  sqlite_db_path: "/opt/vault/jobs.db"
+
+  # LLM models
+  ollama_model: "qwen3:8b"
+  ollama_vision_model: "qwen2.5vl:7b"
+  ollama_embed_model: "bge-m3"
+  embedding_model: "BAAI/bge-m3"
+
+  # Embedding pipeline
+  embedding_batch_size: 32
+
+  # Asset downloader
+  asset_timeout_seconds: 60
+  asset_concurrency: 4
+  asset_retry_count: 2
+  max_file_size_mb: 50
+
+  fetcher_timeout_seconds: 30.0
+  readability_timeout_seconds: 30.0
+  job_fetch_timeout_seconds: 10.0
+  ollama_health_timeout_seconds: 5.0
+  ollama_generate_timeout_seconds: 120.0
+  embedding_request_timeout_seconds: 120.0
+  media_download_timeout_seconds: 15.0
+
+  # Job lifecycle
+  stale_job_timeout_minutes: 15
+
+  # Wiki generation
+  wiki_content_max_chars: 8000
+
+  # Logging
+  log_level: "INFO"
+
+readability:
+  port: 3000
+  body_size_limit: "10mb"
+
+infra:
+  ports:
+    gateway_host: 7878
+    obsidian_host: 7899
+  timezone: "Asia/Tokyo"
+
+  healthcheck:
+    interval_seconds: 10
+    timeout_seconds: 5
+    retries: 3
+    gateway_start_period_seconds: 30
+    readability_start_period_seconds: 15
+    obsidian_start_period_seconds: 60
+
+  resource_limits:
+    gateway_mem: "512m"
+    readability_mem: "256m"
+    obsidian_mem: "2g"
+
+  autoheal:
+    interval_seconds: 30
+    start_period_seconds: 300
+
+  vault_volume:
+    nfs_addr: "10.1.1.250"
+    nfs_device: ":/local/dockerdata/vault"
+    nfs_opts: "nfsvers=4,addr=10.1.1.250,hard,timeo=600,retrans=2,rw,noac"

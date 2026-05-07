@@ -14,10 +14,9 @@ dependencies = [
     "uvicorn[standard]",
     "httpx",
     "python-multipart",
-    "pydantic-settings",
+    "pydantic-settings[yaml]>=2.6",
     "pymupdf4llm",
     "pymupdf",
-    "numpy",
 ]
 
 [project.optional-dependencies]

@@ -6,8 +6,10 @@ services:
     env_file: .env
     environment:
       - TZ=Asia/Tokyo
+      - SENJI_CONFIG_YAML=/app/config.yaml
     volumes:
       - vault:/opt/vault
+      - ./config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     depends_on:
       readability:
@@ -25,6 +27,10 @@ services:
   readability:
     build: ./senji-readability
     expose: ["3000"]
+    environment:
+      - SENJI_CONFIG_YAML=/app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]

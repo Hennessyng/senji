@@ -12,8 +12,6 @@ logger = logging.getLogger("senji.pics.ollama_client")
 
 _HEALTH_RETRIES = 3
 _BACKOFF_DELAYS = (0.5, 1.0, 2.0)
-_HEALTH_TIMEOUT = 5.0
-_GENERATE_TIMEOUT = 120.0
 
 
 class OllamaClient:
@@ -26,7 +24,7 @@ class OllamaClient:
         for attempt in range(_HEALTH_RETRIES):
             retries_left = _HEALTH_RETRIES - attempt - 1
             try:
-                async with httpx.AsyncClient(timeout=_HEALTH_TIMEOUT) as client:
+                async with httpx.AsyncClient(timeout=settings.ollama_health_timeout_seconds) as client:
                     resp = await client.get(f"{self.base_url}/api/tags")
                     resp.raise_for_status()
                 self.available = True
@@ -64,7 +62,7 @@ class OllamaClient:
 
     async def _stream_generate(self, payload: dict) -> str:
         chunks: list[str] = []
-        async with httpx.AsyncClient(timeout=_GENERATE_TIMEOUT) as client, client.stream(
+        async with httpx.AsyncClient(timeout=settings.ollama_generate_timeout_seconds) as client, client.stream(
             "POST", f"{self.base_url}/api/generate", json=payload
         ) as resp:
             resp.raise_for_status()
@@ -78,7 +76,7 @@ class OllamaClient:
 
     async def _stream_chat(self, payload: dict) -> str:
         chunks: list[str] = []
-        async with httpx.AsyncClient(timeout=_GENERATE_TIMEOUT) as client, client.stream(
+        async with httpx.AsyncClient(timeout=settings.ollama_generate_timeout_seconds) as client, client.stream(
             "POST", f"{self.base_url}/api/chat", json=payload
         ) as resp:
             resp.raise_for_status()

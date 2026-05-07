@@ -95,7 +95,7 @@ class EmbeddingService:
         if settings.ollama_base_url:
             try:
                 import httpx as _httpx  # noqa: PLC0415
-                async with _httpx.AsyncClient(timeout=120.0) as client:
+                async with _httpx.AsyncClient(timeout=settings.embedding_request_timeout_seconds) as client:
                     vectors: list[list[float]] = []
                     for text in texts:
                         resp = await client.post(
