@@ -369,6 +369,11 @@ class JobQueue:
                     raise IngestError(
                         "trafilatura returned empty content", detail=str(exc)
                     ) from exc
+                if not (extracted.get("markdown") or "").strip():
+                    raise IngestError(
+                        "trafilatura returned empty content",
+                        detail="readability fallback also produced empty markdown",
+                    )
 
             markdown = extracted.get("markdown") or ""
 
