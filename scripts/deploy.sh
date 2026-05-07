@@ -10,8 +10,9 @@ log "Deploy started"
 
 cd "$REPO"
 
-log "Pulling latest code"
-git pull --ff-only
+log "Fetching and hard-resetting to origin/main"
+git fetch origin
+git reset --hard origin/main
 [[ "${SENJI_REFRESHED:-0}" == "1" ]] || exec env SENJI_REFRESHED=1 bash "$REPO/scripts/deploy.sh"
 
 # Generate live hooks.json with real secret from .env
