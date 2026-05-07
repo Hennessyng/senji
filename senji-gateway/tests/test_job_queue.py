@@ -226,6 +226,7 @@ def test_jobs_table_exists(tmp_path) -> None:
     assert row is not None
 
 
+@pytest.mark.asyncio
 async def test_worker_transitions_queued_to_completed(tmp_path) -> None:
     q = JobQueue(str(tmp_path / "jobs.db"))
     job = make_job()
@@ -242,6 +243,7 @@ async def test_worker_transitions_queued_to_completed(tmp_path) -> None:
     assert q.get_status(job.job_id).status == "completed"
 
 
+@pytest.mark.asyncio
 async def test_worker_processes_multiple_jobs(tmp_path) -> None:
     q = JobQueue(str(tmp_path / "jobs.db"))
     jobs = [make_job() for _ in range(3)]
@@ -260,6 +262,7 @@ async def test_worker_processes_multiple_jobs(tmp_path) -> None:
         assert q.get_status(j.job_id).status == "completed"
 
 
+@pytest.mark.asyncio
 async def test_worker_ignores_already_completed(tmp_path) -> None:
     q = JobQueue(str(tmp_path / "jobs.db"))
     job = make_job()
