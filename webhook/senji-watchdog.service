@@ -1,0 +1,10 @@
+[Unit]
+Description=Senji compose watchdog (recovers Created-stuck containers)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=SENJI_PROJECT_DIR=/opt/stacks/homelab/senji
+ExecStart=/opt/stacks/homelab/senji/scripts/watchdog.sh
+Nice=10

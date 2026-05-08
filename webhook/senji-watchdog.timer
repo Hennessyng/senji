@@ -1,0 +1,13 @@
+[Unit]
+Description=Run senji-watchdog periodically
+Requires=senji-watchdog.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=senji-watchdog.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target
