@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     asset_concurrency: int = 4
     asset_retry_count: int = 2
 
+    renderer_url: str = "http://renderer:3001"
+    renderer_timeout_seconds: float = 45.0
+    js_render_domains: list[str] = ["threads.com", "threads.net", "instagram.com", "twitter.com", "x.com"]
+
     fetcher_timeout_seconds: float = 30.0
     readability_timeout_seconds: float = 30.0
     job_fetch_timeout_seconds: float = 10.0
