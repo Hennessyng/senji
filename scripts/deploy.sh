@@ -51,11 +51,14 @@ done
 log "Running self-test"
 if python3 "$REPO/tests/agentic_self_test.py" >> "$LOG" 2>&1; then
     log "Self-test passed — deploy complete"
-    # Sync service file and reload webhook last — this restarts our parent process
-    cp "$REPO/webhook/senji-webhook.service" /etc/systemd/system/senji-webhook.service
+    # Drop-in only — NEVER rewrite the base unit (would drop sibling consumers'
+    # hooks). Restart below kills our parent process. See specs/cicd-pipeline.md.
+    install -d -m 0755 /etc/systemd/system/senji-webhook.service.d
+    install -m 0644 "$REPO/webhook/senji.conf" \
+        /etc/systemd/system/senji-webhook.service.d/senji.conf
     systemctl daemon-reload
     systemctl restart senji-webhook
-    log "Webhook service synced and restarted"
+    log "Webhook drop-in synced and restarted"
 else
     log "ERROR: Self-test failed — rolling back"
     git stash 2>/dev/null || true

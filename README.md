@@ -435,8 +435,13 @@ chmod +x /opt/stacks/homelab/senji/scripts/deploy.sh
 
 ### Step 4 — VM: install and start the systemd service
 
+The base unit is a **one-time bootstrap** — once installed, it is never rewritten. Each subsequent deploy installs senji's drop-in at `/etc/systemd/system/senji-webhook.service.d/senji.conf` instead (see `specs/cicd-pipeline.md` → "Shared webhook drop-in pattern"). This lets sibling projects on the same VM (e.g. otoflow) compose into the same webhook daemon without trampling each other.
+
 ```bash
 cp /opt/stacks/homelab/senji/webhook/senji-webhook.service /etc/systemd/system/
+install -d -m 0755 /etc/systemd/system/senji-webhook.service.d
+install -m 0644 /opt/stacks/homelab/senji/webhook/senji.conf \
+  /etc/systemd/system/senji-webhook.service.d/senji.conf
 systemctl daemon-reload
 systemctl enable --now senji-webhook
 ```
