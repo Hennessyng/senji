@@ -26,6 +26,8 @@ services:
     mem_limit: 512m
     memswap_limit: 512m
     networks: [senji-net]
+    labels:
+      - "autoheal=true"
 
   readability:
     build: ./senji-readability

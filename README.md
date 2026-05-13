@@ -372,7 +372,7 @@ Each failure prints `[DIAG]` (container logs) and `[FIX]` (exact corrective comm
 
 ```bash
 # Start with hot-reload (port 7878)
-docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # Gateway reloads on file save (senji-gateway/app/)
 # Readability reloads on file save (senji-readability/src/)
